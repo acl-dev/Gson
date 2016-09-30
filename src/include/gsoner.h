@@ -9,14 +9,7 @@ namespace acl
 {
 	namespace gson
 	{
-#define GSON_EXCEPTION(E)\
-		struct E##:std::exception\
-		{\
-			virtual char const* what() const\
-			{\
-				return #E;\
-			}\
-		};
+
 	class gsoner
 	{
 	public:
@@ -24,21 +17,51 @@ namespace acl
 		{
 
 		}
+#define GSON_EXCEPTION(E)\
+		struct E##:std::exception\
+		{\
+			E(){}\
+			E(const char *msg):exception(msg){}\
+		};
 
 		GSON_EXCEPTION(syntax_error);
-		
+		GSON_EXCEPTION(unsupported_type);
 		struct field_t 
 		{
 			enum type_t
 			{
 				e_bool,
+				e_bool_ptr,
 				e_number,
 				e_double,
+				e_cstr,//char *
+				e_ccstr,//const char *
 				e_string,
+				e_list,
+				e_vector,
+				e_map,
 				e_object,
 			};
 			type_t type_;
 			std::string name_;
+			field_t()
+			{
+
+			}
+			field_t(type_t t, const std::string &name)
+				:type_(t),
+				name_(name)
+			{
+
+			}
+			virtual ~field_t()
+			{
+
+			}
+		};
+		struct list_t :field_t
+		{
+			field_t inner_type_;
 		};
 		struct object_t
 		{
@@ -74,12 +97,16 @@ namespace acl
 					return "add_double";
 				case gsoner::field_t::e_string:
 					return "add_text";
+				case gsoner::field_t::e_list:
+				case gsoner::field_t::e_vector:
+				case gsoner::field_t::e_map:
 				case gsoner::field_t::e_object:
 					return "add_child";
 
 				default:
 					break;
 			}
+			return "error_type";
 		}
 		std::string get_gson_func_laber (const field_t &field)
 		{
@@ -91,11 +118,15 @@ namespace acl
 				case gsoner::field_t::e_double:
 				case gsoner::field_t::e_string:
 					return "acl::gson::get_value(";
+				case gsoner::field_t::e_list:
+				case gsoner::field_t::e_vector:
+				case gsoner::field_t::e_map:
 				case gsoner::field_t::e_object:
 					return "acl::gson::gson(json,";
 				default:
 					break;
 			}
+			return "error_type";
 		}
 
 		function_code_t generate_function_code (const object_t &obj)
@@ -385,7 +416,7 @@ namespace acl
 						{
 							field_t f;
 							f.name_ = name;
-							f.type_ = field_t::e_string;
+							f.type_ = field_t::e_ccstr;
 							current_obj_.fields_.push_back(f);
 							return true;
 						}
@@ -397,12 +428,39 @@ namespace acl
 							{
 								field_t f;
 								f.name_ = name;
-								f.type_ = field_t::e_string;
+								f.type_ = field_t::e_ccstr;
 								current_obj_.fields_.push_back(f);
 								return true;
 							}
 						}
 					}
+					throw unsupported_type(("unsupported type:'"+ types +"'")
+										   .c_str());
+				}
+				if (first.find("char") != std::string::npos)
+				{
+					if(first == "char*")
+					{
+						field_t f;
+						f.name_ = name;
+						f.type_ = field_t::e_cstr;
+						current_obj_.fields_.push_back(f);
+						return true;
+					}
+					tokens.pop_front();
+					if (tokens.size())
+					{
+						first = tokens.front();
+						if (first == "*")
+						{
+							field_t f;
+							f.name_ = name;
+							f.type_ = field_t::e_cstr;
+							current_obj_.fields_.push_back(f);
+							return true;
+						}
+					}
+					throw unsupported_type("unsupported 'char' type");
 				}
 				if (first.find("std") != std::string::npos)
 				{
@@ -415,17 +473,31 @@ namespace acl
 							f.name_ = name;
 							f.type_ = field_t::e_string;
 							current_obj_.fields_.push_back (f);
-							break;
+							return true;
 						}
-						else if (itr->find ("list") != std::string::npos ||
-								 itr->find ("vector") != std::string::npos||
-								 itr->find ("map") != std::string::npos)
+						else if (itr->find ("list") != std::string::npos )
 						{
 							field_t f;
 							f.name_ = name;
-							f.type_ = field_t::e_object;
+							f.type_ = field_t::e_list;
 							current_obj_.fields_.push_back (f);
-							break;
+							return true;;
+						}
+						else if(itr->find("vector") != std::string::npos )
+						{
+							field_t f;
+							f.name_ = name;
+							f.type_ = field_t::e_vector;
+							current_obj_.fields_.push_back(f);
+							return true;;
+						}
+						else if(itr->find("map") != std::string::npos)
+						{
+							field_t f;
+							f.name_ = name;
+							f.type_ = field_t::e_map;
+							current_obj_.fields_.push_back(f);
+							return true;;
 						}
 					}
 				}
@@ -457,6 +529,7 @@ namespace acl
 					f.type_ = field_t::e_number;
 					f.name_ = name;
 					current_obj_.fields_.push_back (f);
+					return true;
 				}
 				else if (first == "bool")
 				{
@@ -464,6 +537,7 @@ namespace acl
 					f.type_ = field_t::e_bool;
 					f.name_ = name;
 					current_obj_.fields_.push_back (f);
+					return true;
 
 				}
 				else if (first == "float" ||
@@ -473,6 +547,7 @@ namespace acl
 					f.type_ = field_t::e_double;
 					f.name_ = name;
 					current_obj_.fields_.push_back (f);
+					return true;
 				}
 				else
 				{
@@ -481,9 +556,12 @@ namespace acl
 					f.name_ = name;
 					f.type_ = field_t::e_object;
 					current_obj_.fields_.push_back (f);
+					return true;
 				}
 				return true;
+
 			}
+			return false;
 		}
 		void read_file (const char *file_path)
 		{
@@ -491,15 +569,11 @@ namespace acl
 			std::string str ((std::istreambuf_iterator<char> (is)),
 							 std::istreambuf_iterator<char> ());
 			codes_ = str;
-			codes_ += "                                            "
-				      "                                           "                                             
-				    "                                            "
-				 "                                               \n";
 			printf (codes_.c_str ());
 		}
 		void parse_code()
 		{
-			char c = '/n';
+			char c = '\n';
 			max_pos_ = codes_.size ();
 			try
 			{
@@ -535,7 +609,8 @@ namespace acl
 			}
 			catch (std::exception & e)
 			{
-
+				printf(e.what());
+				return;
 			}
 			
 
