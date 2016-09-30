@@ -9,7 +9,14 @@ namespace acl
 {
 	namespace gson
 	{
-
+#define GSON_EXCEPTION(E)\
+		struct E##:std::exception\
+		{\
+			virtual char const* what() const\
+			{\
+				return #E;\
+			}\
+		};
 	class gsoner
 	{
 	public:
@@ -17,6 +24,9 @@ namespace acl
 		{
 
 		}
+
+		GSON_EXCEPTION(syntax_error);
+		
 		struct field_t 
 		{
 			enum type_t
@@ -191,12 +201,20 @@ namespace acl
 					   codes_[pos_] != '{' &&
 					   codes_[pos_] != '\r'  &&
 					   codes_[pos_] != '\n' && 
-					   codes_[pos_] != '\t')
+					   codes_[pos_] != '\t'&&
+					   codes_[pos_] != '/') //
 				{
 					name.push_back (codes_[pos_]);
 					pos_++;
 				}
+			check_again:
 				skip_space ();
+				if(codes_[pos_] == '/')
+				{
+					if(check_comment() == false)
+						throw syntax_error();
+					goto check_again;
+				}
 				if (codes_[pos_] == '{')
 				{
 					pos_++;
@@ -220,7 +238,14 @@ namespace acl
 			if (status_ =  e_struct_menber_type)
 			{
 				pos_++;
+			again:
 				skip_space ();
+				if (codes_[pos_] == '/')
+				{
+					if(check_comment() == false)
+						throw syntax_error();
+					goto again;
+				}
 				if (codes_[pos_] == ';')
 				{
 					pos_++;
@@ -243,7 +268,7 @@ namespace acl
 				pos_++;
 				pos_++;
 				//skip a line
-				while (codes_[pos_] == '/n')
+				while (codes_[pos_] != '\n')
 					pos_++;
 				return true;
 			}
@@ -253,9 +278,11 @@ namespace acl
 				//skip /**/comment
 				pos_++;
 				pos_++;
-				while (codes_[pos_] == '*' && 
-					   codes_[pos_+1] == '/')
+				while (codes_[pos_] != '*' || 
+					   codes_[pos_+1] !='/')
 					pos_++;
+				pos_++;
+				pos_++;
 				return true;
 			}
 			return false;
@@ -277,8 +304,16 @@ namespace acl
 			{
 				std::string lines;
 				skip_space ();
-				while (codes_[pos_] != ';')
+				while (true)
 				{
+					if(codes_[pos_] == '/')
+					{
+						if(check_comment() == false)
+							throw syntax_error();
+						continue;
+					}
+					if(codes_[pos_] == ';')
+						break;
 					lines.push_back (codes_[pos_]);
 					pos_++;
 				}
@@ -308,7 +343,7 @@ namespace acl
 				std::reverse (name.begin (), name.end ());
 
 				types = lines.substr (0,e);
-				std::vector<std::string> tokens;
+				std::list<std::string> tokens;
 				std::string token;
 				for (std::string::iterator itr = types.begin ();
 					itr!= types.end();++itr)
@@ -338,10 +373,40 @@ namespace acl
 				}
 
 				//std    :: list <int> a;
-				std::string first = tokens[0];
+				std::string first = tokens.front();
+				if(first == "const")
+				{
+					tokens.pop_front();
+					first = tokens.front();
+					std::size_t pos = first.find("char");
+					if (pos != std::string::npos )
+					{
+						if (first.find_first_of('*', pos) != std::string::npos)
+						{
+							field_t f;
+							f.name_ = name;
+							f.type_ = field_t::e_string;
+							current_obj_.fields_.push_back(f);
+							return true;
+						}
+						tokens.pop_front();
+						if (tokens.size())
+						{
+							first = tokens.front();
+							if (first.find('*') != std::string::npos)
+							{
+								field_t f;
+								f.name_ = name;
+								f.type_ = field_t::e_string;
+								current_obj_.fields_.push_back(f);
+								return true;
+							}
+						}
+					}
+				}
 				if (first.find("std") != std::string::npos)
 				{
-					for (std::vector<std::string>::iterator itr = tokens.begin ();
+					for (std::list<std::string>::iterator itr = tokens.begin ();
 						itr != tokens.end();++itr)
 					{
 						if (itr->find ("string") != std::string::npos)
@@ -366,10 +431,19 @@ namespace acl
 				}
 				else if (first.find("acl")!= std::string::npos)
 				{
-					field_t f;
-					f.name_ = name;
-					f.type_ = field_t::e_string;
-					current_obj_.fields_.push_back (f);
+					for(std::list<std::string>::iterator itr = tokens.begin();
+						itr != tokens.end(); ++itr)
+					{
+						if(itr->find("string") != std::string::npos)
+						{
+							field_t f;
+							f.name_ = name;
+							f.type_ = field_t::e_string;
+							current_obj_.fields_.push_back(f);
+							return true;
+						}
+					}
+					throw syntax_error();
 				}
 				else if (first == "singned" ||
 						  first == "int" ||
@@ -427,29 +501,43 @@ namespace acl
 		{
 			char c = '/n';
 			max_pos_ = codes_.size ();
-			do 
+			try
 			{
-				skip_space ();
-				if(pos_ == max_pos_)
-					break;
-				char ch = codes_[pos_]; 
-				switch (ch)
+				do
 				{
+					skip_space();
+					if(pos_ == max_pos_)
+						break;
+					char ch = codes_[pos_];
+					switch(ch)
+					{
 					case '/':
-						if (check_comment ())
+						if(check_comment())
 							continue;
 					case '}':
-						check_struct_end ();
+						if(check_struct_end())
+							continue;
 					default:
-						{
-							if (check_struct_begin ())
-								continue;
-							if (check_member())
-								continue;
-						}
-				}
+					{
+						if(check_struct_begin())
+							continue;
+						if(check_member())
+							continue;
+					}
+					}
 
-			} while (pos_ < max_pos_);
+				} while(pos_ < max_pos_);
+			}
+			catch(syntax_error &e)
+			{
+				printf(e.what());
+				return;
+			}
+			catch (std::exception & e)
+			{
+
+			}
+			
 
 			std::ofstream header("gson_gen.h");
 			std::ofstream define("gson_gen.cpp");
@@ -481,6 +569,7 @@ namespace acl
 			header.close ();
 			define.close ();
 		}
+		char cc;
 		int pos_ = 0;
 		int max_pos_;
 		std::string comment_begin_;
