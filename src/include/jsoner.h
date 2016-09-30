@@ -195,7 +195,7 @@ namespace acl
 		/*
 			add_child ("{laber}", to_json (json, group.bools_));
 		*/
-		std::string add_array (const std::string & laber,
+		std::string add_objject(const std::string & laber,
 							   const std::string & prefix,
 							   const object_t * obj)
 		{
@@ -248,29 +248,18 @@ namespace acl
 				case acl::jsoner::object_t::e_char_string:
 					return add_text (laber, prefix, obj);
 
-				case acl::jsoner::object_t::e_char:
-					break;
-
 				case acl::jsoner::object_t::e_std_list:
 				case acl::jsoner::object_t::e_std_list_ptr:
 				case acl::jsoner::object_t::e_std_vector:
 				case acl::jsoner::object_t::e_std_vector_ptr:
-					return add_array (laber, prefix, obj);
-
-					break;
 				case acl::jsoner::object_t::e_std_map:
-					break;
 				case acl::jsoner::object_t::e_std_map_ptr:
-					break;
-		
 				case acl::jsoner::object_t::e_std_pair:
-					break;
 				case acl::jsoner::object_t::e_std_pair_ptr:
-					break;
 				case acl::jsoner::object_t::e_struct:
-					break;
 				case acl::jsoner::object_t::e_struct_ptr:
-					break;
+					return add_objject (laber, prefix, obj);
+				case acl::jsoner::object_t::e_char:
 				default:
 					break;
 			}
