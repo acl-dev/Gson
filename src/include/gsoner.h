@@ -15,7 +15,9 @@ namespace acl
 	public:
 		gsoner ()
 		{
-
+			status_ = e_uninit;
+			gen_header_ = NULL;
+			gen_source_ = NULL;
 		}
 #define GSON_EXCEPTION(E)\
 		struct E##:std::exception\
@@ -90,12 +92,15 @@ namespace acl
 			switch (field.type_)
 			{
 				case gsoner::field_t::e_bool:
+				case field_t::e_bool_ptr:
 					return "add_bool";
 				case gsoner::field_t::e_number:
 					return "add_number";
 				case gsoner::field_t::e_double:
 					return "add_double";
 				case gsoner::field_t::e_string:
+				case gsoner::field_t::e_cstr:
+				case gsoner::field_t::e_ccstr:
 					return "add_text";
 				case gsoner::field_t::e_list:
 				case gsoner::field_t::e_vector:
@@ -113,18 +118,13 @@ namespace acl
 			acl::string code;
 			switch (field.type_)
 			{
-				case gsoner::field_t::e_bool:
-				case gsoner::field_t::e_number:
-				case gsoner::field_t::e_double:
-				case gsoner::field_t::e_string:
-					return "acl::gson::get_value(";
 				case gsoner::field_t::e_list:
 				case gsoner::field_t::e_vector:
 				case gsoner::field_t::e_map:
 				case gsoner::field_t::e_object:
 					return "acl::gson::gson(json,";
 				default:
-					break;
+					return "acl::gson::get_value(";
 			}
 			return "error_type";
 		}
@@ -138,25 +138,25 @@ namespace acl
 			str += obj.name_;
 			
 			code.declare_ptr_ = str;
-			code.declare_ptr_ += " *obj);\r\n";
+			code.declare_ptr_ += " *obj);";
 			code.declare2_ = "acl::string gson(const ";
 			code.declare2_ += obj.name_;
-			code.declare2_ += " &obj);\r\n";
+			code.declare2_ += " &obj);";
 			code.definition2_ = code.declare2_.substr (0, code.declare2_.find (";"));
 			code.definition2_ += "\n{\n"
 				"    acl::json json;\n"
 				"    acl::json_node &node = acl::gson::gson (json, obj);\n"
-				"    return node.to_string ();\n}\r\n";
+				"    return node.to_string ();\n}\n\n";
 
 			code.definition_ptr_ = str;
 			code.definition_ptr_ += "*obj)\n"
 				"{\n"
 				"    return gson (json, *obj);\n"
-				"}\r\n";
+				"}\n\n";
 			str += " &obj)";
 			
 			code.declare_ = str;
-			code.declare_ += ";\n";
+			code.declare_ += ";";
 
 			str += "\n{\n";
 			str += space_;
@@ -178,7 +178,7 @@ namespace acl
 			}
 			str += "\n";
 			str += space_;
-			str += "return node;\n}\n\n";
+			str += "return node;\n}";
 
 			code.definition_ = str;
 			return code;
@@ -202,8 +202,6 @@ namespace acl
 			e_uninit,
 			e_comment,
 			e_struct_begin,
-			e_struct_name,
-			e_struct_menber_type,
 			e_struct_end,
 		};
 		/*
@@ -212,71 +210,94 @@ namespace acl
 			
 			}
 		*/
+		//namespace
+		bool check_namespace()
+		{
+			std::string temp = codes_.substr(pos_, strlen("namespace"));
+			if (temp == "namespace")
+			{
+				pos_ += strlen("namespace");
+				namespaces_.push_back(get_name());
+				return true;
+			}
+			return false;
+		}
+		bool check_namespace_end()
+		{
+			if (namespaces_.size())
+			{
+				namespaces_.pop_back();
+				return true;
+			}
+			return false;
+		}
+		std::string get_name()
+		{
+			std::string name;
+			skip_space();
+			while(codes_[pos_] != ' ' &&
+				  codes_[pos_] != '{' &&
+				  codes_[pos_] != '\r'  &&
+				  codes_[pos_] != '\n' &&
+				  codes_[pos_] != '\t'&&
+				  codes_[pos_] != '/') //
+			{
+				name.push_back(codes_[pos_]);
+				pos_++;
+			}
+		check_again:
+			skip_space();
+			if(codes_[pos_] == '/')
+			{
+				if(check_comment() == false)
+					throw syntax_error();
+				goto check_again;
+			}
+			if(codes_[pos_] == '{')
+			{
+				pos_++;
+			}
+			return name;
+		}
+		std::string get_namespace()
+		{
+			std::string result;
+			for (std::list<std::string>::iterator itr = namespaces_.begin();
+				 itr != namespaces_.end(); ++itr)
+			{
+				result += *itr;
+				result += "::";
+			}
+			return result;
+		}
 		bool check_struct_begin ()
 		{
 			if (status_ != e_uninit)
 				return false;
-
+			std::string tmp = codes_.substr(pos_, strlen("struct"));
 			//struct user_t
-			if (codes_[pos_] == 's' &&
-				codes_[pos_+1] == 't' &&
-				codes_[pos_+2] == 'r' &&
-				codes_[pos_+3] == 'u' &&
-				codes_[pos_+4] == 'c' &&
-				codes_[pos_+5] == 't' )
+			if (tmp == "struct")
 			{
-				pos_ += 6;
-				std::string name;
-				skip_space ();
-				while (codes_[pos_] != ' ' &&
-					   codes_[pos_] != '{' &&
-					   codes_[pos_] != '\r'  &&
-					   codes_[pos_] != '\n' && 
-					   codes_[pos_] != '\t'&&
-					   codes_[pos_] != '/') //
-				{
-					name.push_back (codes_[pos_]);
-					pos_++;
-				}
-			check_again:
-				skip_space ();
-				if(codes_[pos_] == '/')
-				{
-					if(check_comment() == false)
-						throw syntax_error();
-					goto check_again;
-				}
-				if (codes_[pos_] == '{')
-				{
-					pos_++;
-					status_ = e_struct_menber_type;
-					current_obj_.name_ = name;
-					return true;
-				}
+				pos_ += strlen("struct");
+				status_ = e_struct_begin;
+				current_obj_.name_ = get_namespace() + get_name();
 				if (codes_[pos_] == ';')
 				{
 					pos_++;
 					//struct user_t ; end of struct;
 					status_ = e_uninit;
-					return true;
 				}
+				return true;
 			}
 			//not struct block
 			return false;
 		}
 		bool check_struct_end ()
 		{
-			if (status_ =  e_struct_menber_type)
+			if (status_ == e_struct_begin)
 			{
 				pos_++;
-			again:
-				skip_space ();
-				if (codes_[pos_] == '/')
-				{
-					if(check_comment() == false)
-						throw syntax_error();
-					goto again;
-				}
+				try_skip_comment();
 				if (codes_[pos_] == ';')
 				{
 					pos_++;
@@ -291,32 +312,80 @@ namespace acl
 			}
 			return false;
 		}
+		void try_skip_comment()
+		{
+		again:
+			skip_space();
+			char ch = codes_[pos_];
+			if(ch == '/')
+			{
+				if(check_comment())
+					goto again;
+			}
+		}
+		bool check_include()
+		{
+			std::string tmp = codes_.substr(pos_, strlen("#include"));
+			if (tmp == "#include")
+			{
+				pos_ += strlen("#include");
+				try_skip_comment();
+				char sym = codes_[pos_++];
+				if(sym == '<')
+					sym = '>';
+				std::string include;
+				while (codes_[pos_] != sym)
+				{
+					include.push_back(codes_[pos_]);
+					pos_++;
+				}
+				pos_++;
+				includes_.push_back(include);
+				return true;
+			}
+			return false;
+		}
 		bool check_comment ()
 		{
+			std::string commemt;
+			bool result = false;
 			if (codes_[pos_] == '/' &&
 				codes_[pos_ + 1] == '/')
 			{
+				result = true;
 				pos_++;
 				pos_++;
 				//skip a line
-				while (codes_[pos_] != '\n')
+				while(codes_[pos_] != '\n')
+				{
+					commemt.push_back(codes_[pos_]);
 					pos_++;
-				return true;
+				}
 			}
 			else if (codes_[pos_] == '/' &&
 					 codes_[pos_ + 1] == '*')
 			{
+				result = true;
 				//skip /**/comment
 				pos_++;
 				pos_++;
-				while (codes_[pos_] != '*' || 
-					   codes_[pos_+1] !='/')
+				while(codes_[pos_] != '*' ||
+					  codes_[pos_ + 1] != '/')
+				{
+					commemt.push_back(codes_[pos_]);
 					pos_++;
+				}
 				pos_++;
 				pos_++;
-				return true;
 			}
-			return false;
+			if (result)
+			{
+				if(commemt.find("Gson@required") == std::string::npos)
+					required = true;
+				else
+					required = false;
+			}
+			return result;
 		}
 		void skip_space ()
 		{
@@ -326,12 +395,12 @@ namespace acl
 				   codes_[pos_] == '\t')
 				pos_++;
 		}
-
+		//check the code is struct member.
 		bool check_member()
 		{
 			//struct user_t{int id;  
 			
-			if (status_ == e_struct_menber_type)
+			if (status_ == e_struct_begin)
 			{
 				std::string lines;
 				skip_space ();
@@ -563,13 +632,25 @@ namespace acl
 			}
 			return false;
 		}
-		void read_file (const char *file_path)
+		bool read_file (const char *filepath)
 		{
-			std::ifstream is (file_path, std::ifstream::binary);
+			std::ifstream is (filepath, std::ifstream::binary);
+			if(!is)
+				return false;
 			std::string str ((std::istreambuf_iterator<char> (is)),
 							 std::istreambuf_iterator<char> ());
 			codes_ = str;
-			printf (codes_.c_str ());
+
+			filename_;
+			int i = strlen(filepath) - 1;
+			while(i >= 0 && (filepath[i] != '\\' || filepath[i] != '/'))
+			{
+				filename_.push_back(filepath[i]);
+				i--;
+			}
+			std::reverse(filename_.begin(), filename_.end());
+
+			return true;
 		}
 		void parse_code()
 		{
@@ -579,24 +660,39 @@ namespace acl
 			{
 				do
 				{
-					skip_space();
+					try_skip_comment();
 					if(pos_ == max_pos_)
 						break;
 					char ch = codes_[pos_];
 					switch(ch)
 					{
 					case '/':
+					{
 						if(check_comment())
 							continue;
+					}
 					case '}':
+					{
 						if(check_struct_end())
 							continue;
+						if(check_namespace_end())
+							continue;
+					}
+					case 'n':
+					{
+						if(check_namespace())
+							continue;
+					}
 					default:
 					{
 						if(check_struct_begin())
 							continue;
 						if(check_member())
 							continue;
+						if(ch == '#' && check_include())
+							continue;
+						printf("%c", codes_[pos_]);
+						pos_++;
 					}
 					}
 
@@ -607,54 +703,105 @@ namespace acl
 				printf(e.what());
 				return;
 			}
+			
 			catch (std::exception & e)
 			{
 				printf(e.what());
 				return;
 			}
 			
-
-			std::ofstream header("gson_gen.h");
-			std::ofstream define("gson_gen.cpp");
-			const char *namespace_start = "namespace acl{\r\nnamespace gson{\r\n";
-			const char *namespace_end = "\r\n}///end of acl.\r\n}///end of gson.";
-			const char *include = "#include \"stdafx.h\"\n"
-								  "#include \"gson_helper.ipp\"\r\n";
-			header.write (namespace_start,strlen(namespace_start));
-
-			define.write (include,strlen(include));
-			define.write (namespace_start, strlen (namespace_start));
-			for (std::list<object_t>::iterator itr = objs_.begin ();
-				itr!= objs_.end();++itr)
-			{
-				function_code_t code =  generate_function_code (*itr);
-				header.write (code.declare_.c_str (), code.declare_.size ());
-				header.write (code.declare_ptr_.c_str (), code.declare_ptr_.size ());
-				header.write (code.declare2_.c_str (), code.declare2_.size ());
-				define.write (code.definition_.c_str (), code.definition_.size ());
-				define.write (code.definition_ptr_.c_str (), code.definition_ptr_.size ());
-				define.write (code.definition2_.c_str (), code.definition2_.size ());
-				printf ("%s\n%s",code.declare_.c_str(),code.definition_.c_str());
-			}
-			header.write (namespace_end, strlen (namespace_end));
-			define.write (namespace_end, strlen (namespace_end));
-
-			header.flush ();
-			define.flush ();
-			header.close ();
-			define.close ();
+			write_generate_file();
+			return ;
 		}
+		void write_generate_file()
+		{
+			const char *namespace_start = "namespace acl\n{\nnamespace gson\n{";
+			const char *namespace_end = "\n}///end of acl.\n}///end of gson.";
+
+			write_source("#include \"stdafx.h\"\n");
+			write_source("#include \"" + filename_ + "\"\n");
+			write_source("#include \"gson_helper.ipp\"\r\n");
+			write_header(namespace_start);
+			write_source(namespace_start);
+
+			for(std::list<object_t>::iterator itr = objs_.begin();
+				itr != objs_.end(); ++itr)
+			{
+				function_code_t code = generate_function_code(*itr);
+				write_header(('\n'+space_+ code.declare_));
+				write_header(('\n'+space_+ code.declare_ptr_));
+				write_header(('\n'+space_ + code.declare2_));
+
+				write_source(add_4space(code.definition_));
+				write_source(add_4space(code.definition_ptr_));
+				write_source(add_4space(code.definition2_));
+			}
+			write_header(namespace_end);
+			write_source(namespace_end);
+			flush();
+		}
+		std::string add_4space(const std::string &code)
+		{
+			std::string result;
+			result += '\n';
+			result += space_;
+			std::string tmp;
+			int len = code.size();
+			int i = 0;
+			bool end = false;
+			while (i < len)
+			{
+				if(code[i] == '}')
+					end = true;
+				result.push_back(code[i]);
+
+				if(end == false &&
+				   code[i] == '\n'&&
+				   code[i+1] != '\n'&& 
+				   code[i + 1] != '\r' )
+				{
+					result += space_;
+				}
+				i++;
+			}
+			return result;
+		}
+		void flush()
+		{
+			gen_header_->flush();
+			gen_source_->flush();
+			delete gen_header_;
+			delete gen_source_;
+		}
+		void write_header(const std::string &data)
+		{
+			if(gen_header_ == NULL)
+				gen_header_ = new std::ofstream("gson_gen.h");
+			gen_header_->write(data.c_str(), data.size());
+		}
+		void write_source(const std::string &data)
+		{
+			if(gen_source_ == NULL)
+				gen_source_ = new std::ofstream("gson_gen.cpp");
+			gen_source_->write(data.c_str(), data.size());
+		}
+
 		char cc;
 		int pos_ = 0;
 		int max_pos_;
 		std::string comment_begin_;
 		std::string comment_end_;
 		std::string codes_;
-		code_parser_status_t status_ = e_uninit;
+		code_parser_status_t status_;
 		std::string space_ = "    ";
-
+		bool required;
 		object_t current_obj_;
 		std::list<object_t> objs_;
+		std::list<std::string> namespaces_;
+		std::list<std::string> includes_;
+		std::string  filename_;
+		std::ofstream *gen_header_;
+		std::ofstream *gen_source_;
 	};
 
 }//end of gson
