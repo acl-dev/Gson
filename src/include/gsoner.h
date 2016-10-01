@@ -46,13 +46,15 @@ namespace acl
 			};
 			type_t type_;
 			std::string name_;
+			bool required_;
 			field_t()
 			{
 
 			}
-			field_t(type_t t, const std::string &name)
+			field_t(type_t t, const std::string &name,bool required)
 				:type_(t),
-				name_(name)
+				name_(name),
+				required_(required)
 			{
 
 			}
@@ -60,10 +62,6 @@ namespace acl
 			{
 
 			}
-		};
-		struct list_t :field_t
-		{
-			field_t inner_type_;
 		};
 		struct object_t
 		{
@@ -129,7 +127,7 @@ namespace acl
 			return "error_type";
 		}
 
-		function_code_t generate_function_code (const object_t &obj)
+		function_code_t gen_pack_code (const object_t &obj)
 		{
 
 			function_code_t code;
@@ -159,13 +157,13 @@ namespace acl
 			code.declare_ += ";";
 
 			str += "\n{\n";
-			str += space_;
+			str += tab_;
 			str += "acl::json_node &node =  json.create_node();\n";
 			
 			for (object_t::fields_t::const_iterator itr = obj.fields_.begin ();
 				itr != obj.fields_.end(); ++itr)
 			{
-				str += space_;
+				str += tab_;
 				str += "node.";
 				str += get_node_func (*itr);
 				str += "(\"";
@@ -177,20 +175,116 @@ namespace acl
 				str += "));\n";
 			}
 			str += "\n";
-			str += space_;
+			str += tab_;
 			str += "return node;\n}";
 
 			code.definition_ = str;
 			return code;
 		}
+		/*
+		bool gson(acl::json_node &node, user_t &obj)
+		{
+			acl::json_node *id = node["id"];
+			acl::json_node *username_ = node["username_"];
+			acl::json_node *auth = node["auth"];
 
-		std::string test1 ()
+			if(id && id->is_number())
+				obj.id = get_value(id->get_int64());
+			else
+				return false;
+			if(username_ && username_->is_string()))
+				obj.username_ = get_value(username_->get_string());
+			else
+				return false;
+			if(auth &&auth->get_obj())
+				gson(auth->get_obj(), &obj.auth);
+			else
+				return false;
+			return true;
+		}
+		*/
+		std::string get_reqired_code(const field_t &field)
+		{
+			if (field.required_)
+			{
+				return tab_+"else\n" + tab_ + tab_ + "return false;\n";
+			}
+			return "";
+		}
+		std::string get_node_name(const std::string &name)
+		{
+			return std::string(tab_+"acl::json_node *")
+				+ name + " = node[\""+name + "\"];";
+		}
+		std::string get_check_code(const field_t &field)
+		{
+			std::string prefix =
+				std::string("if(") + field.name_ + ") && " + field.name_;
+			switch(field.type_)
+			{
+			case field_t::e_bool:
+			case field_t::e_bool_ptr:
+				return prefix +"->is_bool())\n";
+			case field_t::e_number:
+				return prefix + "->is_number())\n";
+			case field_t::e_double:
+				return prefix + "->is_double())\n";
+			case field_t::e_ccstr:
+			case field_t::e_cstr:
+			case field_t::e_string:
+				return prefix + "->is_string())\n";
+			default:
+				return prefix + "->get_obj())\n";
+			}
+			return "unknown_type";
+		}
+		//obj.id = get_value(id->get_int64());
+		std::string get_unpack_code(const field_t &field)
+		{
+			std::string prefix = tab_+tab_+"obj."+field.name_+ " = ";
+			switch(field.type_)
+			{
+			case field_t::e_bool:
+			case field_t::e_bool_ptr:
+				return prefix + field.name_ + "->get_bool();\n";
+			case field_t::e_number:
+				return prefix + field.name_ + "->get_int64());\n";
+			case field_t::e_double:
+				return prefix + field.name_ + "->get_number());\n";
+			case field_t::e_ccstr:
+			case field_t::e_cstr:
+			case field_t::e_string:
+				return prefix + field.name_ + "->get_string());\n";
+			default:
+				return tab_ + tab_ + 
+					"gson(*" + field.name_ + "->get_obj(), &obj.auth);\n";
+			}
+			return "unknown_type";
+		}
+		function_code_t gen_unpack_code(const object_t &obj)
+		{
+			std::list<std::string >node_names;
+			std::list<std::string >unpack_codes;
+			for (std::list<field_t>::const_iterator itr = 
+				 obj.fields_.begin(); 
+				 itr!= obj.fields_.end();++itr)
+			{
+				node_names.push_back(get_node_name(itr->name_));
+				unpack_codes.push_back(get_unpack_code(*itr)+
+									   get_reqired_code(*itr));
+			}
+			function_code_t code;
+			std::string prefix = "bool gson(acl::json_node &node, ";
+			code.declare_ =  prefix + obj.name_ + " &obj);";
+
+		}
+		std::string test_pack ()
 		{
 			object_t obj;
 			obj.name_ = "user_t";
-			obj.fields_.push_back (field_t{field_t::e_bool,"is_stop"});
+			obj.fields_.push_back (field_t{field_t::e_bool,"is_stop", false});
 
-			function_code_t code = generate_function_code (obj);
+			function_code_t code = gen_pack_code (obj);
 
 			printf (code.declare_.c_str ());
 			printf (code.definition_.c_str ());
@@ -381,9 +475,9 @@ namespace acl
 			if (result)
 			{
 				if(commemt.find("Gson@required") == std::string::npos)
-					required = true;
+					required_ = true;
 				else
-					required = false;
+					required_ = false;
 			}
 			return result;
 		}
@@ -727,10 +821,10 @@ namespace acl
 			for(std::list<object_t>::iterator itr = objs_.begin();
 				itr != objs_.end(); ++itr)
 			{
-				function_code_t code = generate_function_code(*itr);
-				write_header(('\n'+space_+ code.declare_));
-				write_header(('\n'+space_+ code.declare_ptr_));
-				write_header(('\n'+space_ + code.declare2_));
+				function_code_t code = gen_pack_code(*itr);
+				write_header(('\n'+tab_+ code.declare_));
+				write_header(('\n'+tab_+ code.declare_ptr_));
+				write_header(('\n'+tab_ + code.declare2_));
 
 				write_source(add_4space(code.definition_));
 				write_source(add_4space(code.definition_ptr_));
@@ -744,7 +838,7 @@ namespace acl
 		{
 			std::string result;
 			result += '\n';
-			result += space_;
+			result += tab_;
 			std::string tmp;
 			int len = code.size();
 			int i = 0;
@@ -760,7 +854,7 @@ namespace acl
 				   code[i+1] != '\n'&& 
 				   code[i + 1] != '\r' )
 				{
-					result += space_;
+					result += tab_;
 				}
 				i++;
 			}
@@ -793,8 +887,8 @@ namespace acl
 		std::string comment_end_;
 		std::string codes_;
 		code_parser_status_t status_;
-		std::string space_ = "    ";
-		bool required;
+		std::string tab_ = "    ";
+		bool required_;
 		object_t current_obj_;
 		std::list<object_t> objs_;
 		std::list<std::string> namespaces_;
