@@ -4,6 +4,7 @@
 #include <vector>
 #include <assert.h>
 #include <xutility>
+#include <iostream>
 
 namespace acl
 {
@@ -140,7 +141,8 @@ namespace acl
 			code.declare2_ = "acl::string gson(const ";
 			code.declare2_ += obj.name_;
 			code.declare2_ += " &obj);";
-			code.definition2_ = code.declare2_.substr (0, code.declare2_.find (";"));
+			code.definition2_ = 
+				code.declare2_.substr (0, code.declare2_.find (";"));
 			code.definition2_ += "\n{\n"
 				"    acl::json json;\n"
 				"    acl::json_node &node = acl::gson::gson (json, obj);\n"
@@ -160,7 +162,8 @@ namespace acl
 			str += tab_;
 			str += "acl::json_node &node =  json.create_node();\n";
 			
-			for (object_t::fields_t::const_iterator itr = obj.fields_.begin ();
+			for (object_t::fields_t::const_iterator 
+				 itr = obj.fields_.begin ();
 				itr != obj.fields_.end(); ++itr)
 			{
 				str += tab_;
@@ -181,86 +184,61 @@ namespace acl
 			code.definition_ = str;
 			return code;
 		}
-		/*
-		bool gson(acl::json_node &node, user_t &obj)
-		{
-			acl::json_node *id = node["id"];
-			acl::json_node *username_ = node["username_"];
-			acl::json_node *auth = node["auth"];
 
-			if(id && id->is_number())
-				obj.id = get_value(id->get_int64());
-			else
-				return false;
-			if(username_ && username_->is_string()))
-				obj.username_ = get_value(username_->get_string());
-			else
-				return false;
-			if(auth &&auth->get_obj())
-				gson(auth->get_obj(), &obj.auth);
-			else
-				return false;
-			return true;
-		}
-		*/
-		std::string get_reqired_code(const field_t &field)
+		std::string get_unpack_code(const std::string &obj_name, const field_t &field)
 		{
-			if (field.required_)
-			{
-				return tab_+"else\n" + tab_ + tab_ + "return false;\n";
-			}
-			return "";
+			if((field.type_ == field_t::e_bool ||
+			   field.type_ == field_t::e_bool_ptr ||
+			   field.type_ == field_t::e_number ||
+			   field.type_ == field_t::e_ccstr ||
+			   field.type_ == field_t::e_cstr ||
+			   field.type_ == field_t::e_double ||
+			   field.type_ == field_t::e_string) &&
+			   field.required_)
+
+				return tab_
+				+ "if(!" + field.name_ + " ||"
+				+ "!(result = gson(*" + field.name_ + ",&obj."
+				+ field.name_ + "), result.first))\n" + tab_ + tab_
+				+ "return std::make_pair(false,\"required ["
+				+ obj_name + "." + field.name_
+				+ "] failed:{\"+result.second+\"}\");";
+
+			else if(field.required_)
+				return tab_
+				+ "if(!" + field.name_ + " ||" + "!" + field.name_
+				+ "->get_obj()||" + "!(result = gson(*" + field.name_
+				+ "->get_obj(), &obj." + field.name_ + "), result.first))\n"
+				+ tab_ + tab_ + "return std::make_pair(false, \"required ["
+				+ obj_name + "." + field.name_
+				+ "] failed:{\"+result.second+\"}\");";
+
+			else if((field.type_ == field_t::e_bool ||
+					field.type_ == field_t::e_bool_ptr ||
+					field.type_ == field_t::e_ccstr ||
+					field.type_ == field_t::e_cstr ||
+					field.type_ == field_t::e_double ||
+					field.type_ == field_t::e_string) &&
+					field.required_ == false)
+
+				return tab_ +
+				"if(" + field.name_ + ")\n" + tab_ + tab_ +
+				"gson(*" + field.name_ + ",&obj." + field.name_ + ");\n";
+
+			else if(field.required_ == false)
+				return tab_
+				+ "if(" + field.name_ + "&& " + field.name_
+				+ "->get_obj())\n" + tab_ + tab_ + " gson(*" + field.name_
+				+ "->get_obj(), &obj." + field.name_ + ");\n";
+
+			return "unknown_type";
 		}
 		std::string get_node_name(const std::string &name)
 		{
 			return std::string(tab_+"acl::json_node *")
 				+ name + " = node[\""+name + "\"];";
 		}
-		std::string get_check_code(const field_t &field)
-		{
-			std::string prefix =
-				std::string("if(") + field.name_ + ") && " + field.name_;
-			switch(field.type_)
-			{
-			case field_t::e_bool:
-			case field_t::e_bool_ptr:
-				return prefix +"->is_bool())\n";
-			case field_t::e_number:
-				return prefix + "->is_number())\n";
-			case field_t::e_double:
-				return prefix + "->is_double())\n";
-			case field_t::e_ccstr:
-			case field_t::e_cstr:
-			case field_t::e_string:
-				return prefix + "->is_string())\n";
-			default:
-				return prefix + "->get_obj())\n";
-			}
-			return "unknown_type";
-		}
-		//obj.id = get_value(id->get_int64());
-		std::string get_unpack_code(const field_t &field)
-		{
-			std::string prefix = tab_+tab_+"obj."+field.name_+ " = ";
-			switch(field.type_)
-			{
-			case field_t::e_bool:
-			case field_t::e_bool_ptr:
-				return prefix + field.name_ + "->get_bool();\n";
-			case field_t::e_number:
-				return prefix + field.name_ + "->get_int64());\n";
-			case field_t::e_double:
-				return prefix + field.name_ + "->get_number());\n";
-			case field_t::e_ccstr:
-			case field_t::e_cstr:
-			case field_t::e_string:
-				return prefix + field.name_ + "->get_string());\n";
-			default:
-				return tab_ + tab_ + 
-					"gson(*" + field.name_ + "->get_obj(), &obj.auth);\n";
-			}
-			return "unknown_type";
-		}
+
 		function_code_t gen_unpack_code(const object_t &obj)
 		{
 			std::list<std::string >node_names;
@@ -270,13 +248,35 @@ namespace acl
 				 itr!= obj.fields_.end();++itr)
 			{
 				node_names.push_back(get_node_name(itr->name_));
-				unpack_codes.push_back(get_unpack_code(*itr)+
-									   get_reqired_code(*itr));
+				unpack_codes.push_back(get_unpack_code(obj.name_, *itr));
 			}
 			function_code_t code;
-			std::string prefix = "bool gson(acl::json_node &node, ";
+			std::string prefix = 
+				"std::pair<bool,std::string> gson(acl::json_node &node, ";
 			code.declare_ =  prefix + obj.name_ + " &obj);";
 
+			code.definition_ += prefix;
+			code.definition_ += obj.name_ + " &obj)\n{\n";
+			
+			for (std::list<std::string>::iterator itr = node_names.begin();
+				 itr != node_names.end();++itr)
+			{
+				code.definition_ += *itr;
+				code.definition_ += "\n";
+			}
+			code.definition_ += tab_ + "std::pair<bool, std::string> result;\n\n";
+			for(std::list<std::string>::iterator itr = unpack_codes.begin();
+				itr != unpack_codes.end(); ++itr)
+			{
+				code.definition_ += *itr;
+				code.definition_ += "\n \n";
+			}
+			code.definition_ += tab_ + "return std::make_pair(true,\"\");\n}\n\n";
+
+			code.definition_ptr_ += prefix + obj.name_ + " *obj)";
+			code.definition_ptr_ += "\n{\n" + tab_ + "return gson(node, *obj);\n}\n\n";
+
+			return code;
 		}
 		std::string test_pack ()
 		{
@@ -536,7 +536,7 @@ namespace acl
 				//get name
 				std::reverse (name.begin (), name.end ());
 
-				types = lines.substr (0,e);
+				types = lines.substr (0,e+1);
 				std::list<std::string> tokens;
 				std::string token;
 				for (std::string::iterator itr = types.begin ();
@@ -544,14 +544,76 @@ namespace acl
 				{
 					if (*itr == ' '||
 						*itr == '\r'||
-						*itr == '\n' ||
-						*itr == '\t' )
+						*itr == '\n'||
+						*itr == '\t')
 					{
 						if (token.size ())
 						{
 							tokens.push_back (token);
 							token.clear ();
 						}
+					}
+					else if(*itr == '*'||
+							*itr == '&')
+					{
+						if(token.size())
+						{
+							tokens.push_back(token);
+							token.clear();
+						}
+						if(*itr == '*')
+							tokens.push_back("*");
+						else
+							tokens.push_back("&");
+					}
+					else if(*itr == ':')
+					{
+						if(token.size())
+						{
+							if (token.back() == ':')
+							{
+								tokens.push_back("::");
+								token.clear();
+								continue;
+							}
+							else
+							{
+								if(token.size())
+								{
+									tokens.push_back(token);
+									token.clear();
+								}
+							}
+						}
+						
+						token.push_back(':');
+					}
+					else if (*itr == '<')
+					{
+						if(token.size())
+						{
+							tokens.push_back(token);
+							token.clear();
+						}
+						tokens.push_back("<");
+					}
+					else if(*itr == '>')
+					{
+						if(token.size())
+						{
+							tokens.push_back(token);
+							token.clear();
+						}
+						tokens.push_back(">");
+					}
+					else if(*itr == ',')
+					{
+						if(token.size())
+						{
+							tokens.push_back(token);
+							token.clear();
+						}
+						tokens.push_back(",");
 					}
 					else
 					{
@@ -571,34 +633,9 @@ namespace acl
 				if(first == "const")
 				{
 					tokens.pop_front();
-					first = tokens.front();
-					std::size_t pos = first.find("char");
-					if (pos != std::string::npos )
-					{
-						if (first.find_first_of('*', pos) != std::string::npos)
-						{
-							field_t f;
-							f.name_ = name;
-							f.type_ = field_t::e_ccstr;
-							current_obj_.fields_.push_back(f);
-							return true;
-						}
-						tokens.pop_front();
-						if (tokens.size())
-						{
-							first = tokens.front();
-							if (first.find('*') != std::string::npos)
-							{
-								field_t f;
-								f.name_ = name;
-								f.type_ = field_t::e_ccstr;
-								current_obj_.fields_.push_back(f);
-								return true;
-							}
-						}
-					}
-					throw unsupported_type(("unsupported type:'"+ types +"'")
-										   .c_str());
+					std::string first = tokens.front();
+					if(tokens.empty())
+						throw unsupported_type(("unsupported \"" + lines+"\"").c_str());
 				}
 				if (first.find("char") != std::string::npos)
 				{
@@ -625,7 +662,7 @@ namespace acl
 					}
 					throw unsupported_type("unsupported 'char' type");
 				}
-				if (first.find("std") != std::string::npos)
+				if (first == "std")
 				{
 					for (std::list<std::string>::iterator itr = tokens.begin ();
 						itr != tokens.end();++itr)
@@ -805,6 +842,7 @@ namespace acl
 			}
 			
 			write_generate_file();
+			std::cout << "OK" << std::endl;
 			return ;
 		}
 		void write_generate_file()
@@ -821,14 +859,20 @@ namespace acl
 			for(std::list<object_t>::iterator itr = objs_.begin();
 				itr != objs_.end(); ++itr)
 			{
-				function_code_t code = gen_pack_code(*itr);
-				write_header(('\n'+tab_+ code.declare_));
-				write_header(('\n'+tab_+ code.declare_ptr_));
-				write_header(('\n'+tab_ + code.declare2_));
+				function_code_t pack = gen_pack_code(*itr);
+				function_code_t unpack = gen_unpack_code(*itr);
+				
+				write_header(('\n' + tab_ + "//"+itr->name_));
+				write_header(('\n' + tab_ + pack.declare2_));
+				write_header(('\n'+tab_+ pack.declare_));
+				write_header(('\n'+tab_+ pack.declare_ptr_));
+				write_header('\n'+tab_+ unpack.declare_);
 
-				write_source(add_4space(code.definition_));
-				write_source(add_4space(code.definition_ptr_));
-				write_source(add_4space(code.definition2_));
+				write_source(add_4space(pack.definition_));
+				write_source(add_4space(pack.definition_ptr_));
+				write_source(add_4space(pack.definition2_));
+				write_source(add_4space(unpack.definition_));
+				write_source(add_4space(unpack.definition_ptr_));
 			}
 			write_header(namespace_end);
 			write_source(namespace_end);
@@ -843,10 +887,18 @@ namespace acl
 			int len = code.size();
 			int i = 0;
 			bool end = false;
+			int syn = 0;
 			while (i < len)
 			{
+				if(code[i] == '{')
+					syn++;
+
 				if(code[i] == '}')
-					end = true;
+				{
+					syn--;
+					if(syn == 0)
+						end = true;
+				}
 				result.push_back(code[i]);
 
 				if(end == false &&

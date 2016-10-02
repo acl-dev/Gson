@@ -13,14 +13,24 @@ static inline void add_item(acl::json &json,\
 node.##FUNC( P value);\
 }
 
-#define __GSON_DEFINE_GET_STR_VALUE__(TYPE,P)\
-static inline const char* get_value(const TYPE &value)\
-{\
-return value##P##c_str();\
+static inline const char* get_value(const std::string &value)
+{
+	return value.c_str();
 }
-
+static inline const char* get_value(const acl::string &value)
+{
+	return value.c_str();
+}
+static inline const char* get_value(const std::string *value)
+{
+	return value->c_str();
+}
+static inline const char* get_value(const acl ::string *value)
+{
+	return value->c_str();
+}
 #define __GSON_DEFINE_GET_VALUE__(TYPE,PTR)\
-static inline TYPE get_value(TYPE PTR value)\
+static inline const TYPE get_value(const TYPE PTR value)\
 {\
 return  PTR##value;\
 }
@@ -137,12 +147,6 @@ return node;\
 
 
 
-	__GSON_DEFINE_GET_STR_VALUE__ (acl::string, .);
-	__GSON_DEFINE_GET_STR_VALUE__ (std::string, .);
-	__GSON_DEFINE_GET_STR_VALUE__ (acl::string*, ->);
-	__GSON_DEFINE_GET_STR_VALUE__ (std::string*, ->);
-
-
 	__GSON_DEFINE_GET_VALUE__ (bool, );
 	__GSON_DEFINE_GET_VALUE__ (int8_t, );
 	__GSON_DEFINE_GET_VALUE__ (uint8_t, );
@@ -231,7 +235,7 @@ return node;\
 										const std::vector<V> &objects)
 	{
 		acl::json_node &node = json.create_array ();
-		for (std::list<T>::const_iterator
+		for (std::vector<V>::const_iterator
 				itr = objects.begin (); itr != objects.end (); itr++)
 		{
 			add_item (json, node, *itr);
@@ -248,11 +252,9 @@ return node;\
 		for (std::map<T, V>::const_iterator
 				itr = objects.begin (); itr != objects.end (); itr++)
 		{
-			node.add_child (
-				json.create_node ().add_child (
-				get_value (itr->first),
-				gson (json, itr->second))
-				);
+			const char *tag = get_value(itr->first);
+			acl::json_node &item= gson(json, itr->second);
+			node.add_child (json.create_node ().add_child (tag, item));
 		}
 		return node;
 	}
