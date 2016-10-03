@@ -482,6 +482,44 @@ namespace acl
 			}
 			return result;
 		}
+		//eg: char *buf = "hellelel";
+		std::string get_static_string()
+		{
+			if(codes_[pos_] != '"')
+				return "";
+			pos_++;
+			int sym = 1;
+			std::string lines;
+			while(true)
+			{
+				if (codes_[pos_] == '\\')
+				{
+					if (codes_[pos_+1] == '"')
+					{
+						lines.push_back('\\');
+						lines.push_back('\"');
+						pos_+=2;
+						continue;
+					}
+				}else if (codes_[pos_] == '\"')
+				{
+					pos_++;
+					try_skip_comment();
+					if(codes_[pos_] == ';')
+					{
+						pos_++;
+						break;
+					}else if (codes_[pos_] == '\"')
+					{
+						pos_++;
+						continue;
+					}
+				}
+				lines.push_back(codes_[pos_]);
+				pos_++;
+			}
+			return lines;
+		}
 		void skip_space ()
 		{
 			while (codes_[pos_] == ' '||
@@ -556,7 +594,42 @@ namespace acl
 			std::pair<bool, std::string> res = get_function_declare();
 			if(res.first == false)
 				return false;
-
+			try_skip_comment();
+			//not find function define.just declare only.
+			if(codes_[pos_] == ';')
+				return true;
+			pos_++;
+			int sym = 1;
+			std::string lines("{");
+			while(true)
+			{
+				if(codes_[pos_] == '/')
+				{
+					if(check_comment() == false)
+						throw syntax_error();
+					continue;
+				}
+				if(codes_[pos_] == '{')
+				{
+					sym++;
+				}
+				if (codes_[pos_] == '"')
+				{
+					std::string str = get_static_string();
+				}
+				else if(codes_[pos_] == '}')
+				{
+					sym--;
+					if (sym == 0)
+					{
+						pos_++;
+						lines.push_back('}');
+						break;
+					}
+				}
+				lines.push_back(codes_[pos_]);
+				pos_++;
+			}
 			return true;
 		}
 		bool check_member()
