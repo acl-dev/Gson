@@ -19,6 +19,7 @@ namespace acl
 			status_ = e_uninit;
 			gen_header_ = NULL;
 			gen_source_ = NULL;
+			default_ = true;
 		}
 #define GSON_EXCEPTION(E)\
 		struct E##:std::exception\
@@ -474,10 +475,10 @@ namespace acl
 			}
 			if (result)
 			{
-				if(commemt.find("Gson@required") == std::string::npos)
-					required_ = true;
-				else
+				if(commemt.find("Gson@optional") == std::string::npos)
 					required_ = false;
+				else if(commemt.find("Gson@required") == std::string::npos)
+					required_ = true;
 			}
 			return result;
 		}
@@ -490,12 +491,81 @@ namespace acl
 				pos_++;
 		}
 		//check the code is struct member.
+		std::pair<bool, std::string>
+			get_function_declare()
+		{
+			if(status_ != e_struct_begin)
+				return std::make_pair(false, "");
+
+			int j = pos_;
+			std::string lines;
+			skip_space();
+			while(true)
+			{
+				if(codes_[j] == '/')
+				{
+					if(check_comment() == false)
+						throw syntax_error();
+					continue;
+				}
+				if(codes_[j] == ';')
+					break;
+				if(codes_[j] == '(')
+					break;
+				lines.push_back(codes_[j]);
+				j++;
+			}
+			if(codes_[j] == ';')
+			{
+				//not function, maybe member field
+				return std::make_pair(false, "");
+			}
+			lines.push_back('(');
+			j++;
+			int syn = 1;
+			while(true)
+			{
+				if(codes_[j] == '/')
+				{
+					if(check_comment() == false)
+						throw syntax_error();
+					continue;
+				}
+				{
+					if(codes_[j] == ')')
+						syn--;
+					if(syn == 0)
+					{
+						lines.push_back(codes_[j]);
+						break;
+					}
+				}
+				if(codes_[j] == '(')
+					syn++;
+				lines.push_back(codes_[j]);
+				j++;
+			}
+			j++;
+			pos_ = j;
+			return std::make_pair(true,lines);
+		}
+		bool check_function()
+		{
+			if(status_ != e_struct_begin)
+				return false;
+			std::pair<bool, std::string> res = get_function_declare();
+			if(res.first == false)
+				return false;
+
+			return true;
+		}
 		bool check_member()
 		{
 			//struct user_t{int id;  
 			
 			if (status_ == e_struct_begin)
 			{
+				required_ = default_;
 				std::string lines;
 				skip_space ();
 				while (true)
@@ -643,6 +713,7 @@ namespace acl
 					{
 						field_t f;
 						f.name_ = name;
+						f.required_ = required_;
 						f.type_ = field_t::e_cstr;
 						current_obj_.fields_.push_back(f);
 						return true;
@@ -655,6 +726,7 @@ namespace acl
 						{
 							field_t f;
 							f.name_ = name;
+							f.required_ = required_;
 							f.type_ = field_t::e_cstr;
 							current_obj_.fields_.push_back(f);
 							return true;
@@ -671,6 +743,7 @@ namespace acl
 						{
 							field_t f;
 							f.name_ = name;
+							f.required_ = required_;
 							f.type_ = field_t::e_string;
 							current_obj_.fields_.push_back (f);
 							return true;
@@ -679,6 +752,7 @@ namespace acl
 						{
 							field_t f;
 							f.name_ = name;
+							f.required_ = required_;
 							f.type_ = field_t::e_list;
 							current_obj_.fields_.push_back (f);
 							return true;;
@@ -687,6 +761,7 @@ namespace acl
 						{
 							field_t f;
 							f.name_ = name;
+							f.required_ = required_;
 							f.type_ = field_t::e_vector;
 							current_obj_.fields_.push_back(f);
 							return true;;
@@ -710,6 +785,7 @@ namespace acl
 						{
 							field_t f;
 							f.name_ = name;
+							f.required_ = required_;
 							f.type_ = field_t::e_string;
 							current_obj_.fields_.push_back(f);
 							return true;
@@ -728,6 +804,7 @@ namespace acl
 					field_t f;
 					f.type_ = field_t::e_number;
 					f.name_ = name;
+					f.required_ = required_;
 					current_obj_.fields_.push_back (f);
 					return true;
 				}
@@ -736,6 +813,7 @@ namespace acl
 					field_t f;
 					f.type_ = field_t::e_bool;
 					f.name_ = name;
+					f.required_ = required_;
 					current_obj_.fields_.push_back (f);
 					return true;
 
@@ -746,6 +824,7 @@ namespace acl
 					field_t f;
 					f.type_ = field_t::e_double;
 					f.name_ = name;
+					f.required_ = required_;
 					current_obj_.fields_.push_back (f);
 					return true;
 				}
@@ -754,6 +833,7 @@ namespace acl
 					// user define class ,struct.
 					field_t f;
 					f.name_ = name;
+					f.required_ = required_;
 					f.type_ = field_t::e_object;
 					current_obj_.fields_.push_back (f);
 					return true;
@@ -763,6 +843,7 @@ namespace acl
 			}
 			return false;
 		}
+	
 		bool read_file (const char *filepath)
 		{
 			std::ifstream is (filepath, std::ifstream::binary);
@@ -817,6 +898,8 @@ namespace acl
 					default:
 					{
 						if(check_struct_begin())
+							continue;
+						if(check_function())
 							continue;
 						if(check_member())
 							continue;
@@ -931,6 +1014,17 @@ namespace acl
 				gen_source_ = new std::ofstream("gson_gen.cpp");
 			gen_source_->write(data.c_str(), data.size());
 		}
+		void set_default_required()
+		{
+			default_ = true;
+		}
+		void set_default_optional()
+		{
+			default_ = false;
+		}
+
+	
+
 
 		char cc;
 		int pos_ = 0;
@@ -941,6 +1035,7 @@ namespace acl
 		code_parser_status_t status_;
 		std::string tab_ = "    ";
 		bool required_;
+		bool default_;
 		object_t current_obj_;
 		std::list<object_t> objs_;
 		std::list<std::string> namespaces_;

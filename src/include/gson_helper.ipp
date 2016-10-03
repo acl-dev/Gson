@@ -93,18 +93,29 @@ namespace acl
 		{
 		};
 		//double
-		template<bool T>
+
+		template<class T>
 		struct _Is_double :std::false_type
 		{
 		};
 		template<>
-		struct _Is_double<true> :std::true_type
+		struct _Is_double<float> :std::true_type
+		{
+		};
+		template<>
+		struct _Is_double<double> :std::true_type
+		{
+		};
+		template<>
+		struct _Is_double<long double> :std::true_type
 		{
 		};
 		template <class T>
-		struct is_double :_Is_double<std::is_floating_point<
+		struct is_double :
+			_Is_double<
 			typename std::remove_pointer<
-			typename std::remove_pointer<T>::type>::type>::value>
+			typename std::remove_pointer<T>::type>::type
+			>
 		{
 
 		};
