@@ -944,6 +944,20 @@ namespace acl
 
 			return true;
 		}
+		bool read_multi_file(std::vector<std::string> files)
+		{
+			for (std::vector<std::string>::const_iterator itr = files.begin();
+				 itr != files.end();itr ++)
+			{
+				if(read_file(itr->c_str()) == false)
+				{
+					std::cout << "read_file:" \
+						<< itr->c_str() << " error" << std::endl;
+					return false;
+				}
+			}
+		}
+
 		void parse_code()
 		{
 			char c = '\n';
@@ -1012,12 +1026,8 @@ namespace acl
 				printf(e.what());
 				return;
 			}
-			
-			write_generate_file();
-			std::cout << "OK" << std::endl;
-			return ;
 		}
-		void write_generate_file()
+		void gen_gson()
 		{
 			const char *namespace_start = "namespace acl\n{\nnamespace gson\n{";
 			const char *namespace_end = "\n}///end of acl.\n}///end of gson.";
