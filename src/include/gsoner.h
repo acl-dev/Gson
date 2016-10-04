@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <xutility>
 #include <iostream>
+#include <algorithm>
 
 namespace acl
 {
@@ -597,7 +598,10 @@ namespace acl
 			try_skip_comment();
 			//not find function define.just declare only.
 			if(codes_[pos_] == ';')
+			{
+				pos_++;//skip ';' sym
 				return true;
+			}
 			pos_++;
 			int sym = 1;
 			std::string lines("{");
@@ -615,7 +619,10 @@ namespace acl
 				}
 				if (codes_[pos_] == '"')
 				{
-					std::string str = get_static_string();
+					lines.push_back('"');
+					lines += get_static_string();
+					lines.push_back('"');
+					continue;
 				}
 				else if(codes_[pos_] == '}')
 				{
@@ -987,7 +994,16 @@ namespace acl
 			}
 			catch(syntax_error &e)
 			{
-				printf(e.what());
+				std::cout << e.what() << std::endl << std::endl;
+
+				std::string current_codes = 
+					codes_.substr(
+					std::max<std::size_t>(pos_-10, 0), 
+					std::min<std::size_t>(20, codes_.size()-pos_));
+
+				std::cout << "              "<<current_codes.c_str() << std::endl;
+				std::cout << "exception pos:----------^----------" << std::endl;
+
 				return;
 			}
 			
