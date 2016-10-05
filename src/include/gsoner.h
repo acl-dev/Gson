@@ -21,6 +21,8 @@ namespace acl
 			gen_header_ = NULL;
 			gen_source_ = NULL;
 			default_ = true;
+			gen_header_filename_ = "gson_gen.h";
+			gen_source_filename_ = "gson_gen.cpp";
 		}
 #define GSON_EXCEPTION(E)\
 		struct E##:std::exception\
@@ -931,16 +933,16 @@ namespace acl
 				return false;
 			std::string str ((std::istreambuf_iterator<char> (is)),
 							 std::istreambuf_iterator<char> ());
-			codes_ = str;
+			codes_.append(str);
 
-			filename_;
+			std::string  filename;
 			int i = strlen(filepath) - 1;
 			while(i >= 0 && (filepath[i] != '\\' || filepath[i] != '/'))
 			{
-				filename_.push_back(filepath[i]);
+				filename.push_back(filepath[i]);
 				i--;
 			}
-			std::reverse(filename_.begin(), filename_.end());
+			std::reverse(filename.begin(), filename.end());
 
 			return true;
 		}
@@ -955,7 +957,9 @@ namespace acl
 						<< itr->c_str() << " error" << std::endl;
 					return false;
 				}
+				files_.push_back(*itr);
 			}
+			return true;
 		}
 
 		void parse_code()
@@ -1027,14 +1031,27 @@ namespace acl
 				return;
 			}
 		}
+		std::string get_include_files()
+		{
+			std::string str;
+			for (std::list<std::string>::const_iterator itr = files_.begin();
+				 itr != files_.end(); itr ++)
+			{
+				str += "#include \"";
+				str += *itr;
+				str += "\"\n";
+			}
+			return str;
+		}
 		void gen_gson()
 		{
 			const char *namespace_start = "namespace acl\n{\nnamespace gson\n{";
 			const char *namespace_end = "\n}///end of acl.\n}///end of gson.";
 
 			write_source("#include \"stdafx.h\"\n");
-			write_source("#include \"" + filename_ + "\"\n");
+			write_source("#include \"" + gen_header_filename_ + "\"\n");
 			write_source("#include \"gson_helper.ipp\"\r\n");
+			write_header(get_include_files());
 			write_header(namespace_start);
 			write_source(namespace_start);
 
@@ -1104,13 +1121,13 @@ namespace acl
 		void write_header(const std::string &data)
 		{
 			if(gen_header_ == NULL)
-				gen_header_ = new std::ofstream("gson_gen.h");
+				gen_header_ = new std::ofstream(gen_header_filename_.c_str());
 			gen_header_->write(data.c_str(), data.size());
 		}
 		void write_source(const std::string &data)
 		{
 			if(gen_source_ == NULL)
-				gen_source_ = new std::ofstream("gson_gen.cpp");
+				gen_source_ = new std::ofstream(gen_source_filename_.c_str());
 			gen_source_->write(data.c_str(), data.size());
 		}
 		void set_default_required()
@@ -1121,9 +1138,6 @@ namespace acl
 		{
 			default_ = false;
 		}
-
-	
-
 
 		char cc;
 		int pos_ = 0;
@@ -1139,9 +1153,11 @@ namespace acl
 		std::list<object_t> objs_;
 		std::list<std::string> namespaces_;
 		std::list<std::string> includes_;
-		std::string  filename_;
+		std::list<std::string> files_;
 		std::ofstream *gen_header_;
 		std::ofstream *gen_source_;
+		std::string gen_header_filename_;
+		std::string gen_source_filename_;
 	};
 
 }//end of gson
