@@ -3,7 +3,6 @@
 #include <map>
 #include <vector>
 
-
 namespace acl
 {
 	namespace gson
