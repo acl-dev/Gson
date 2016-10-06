@@ -2,7 +2,7 @@
 #include "acl_cpp/stdlib/string.hpp"
 #include "acl_cpp/stdlib/json.hpp"
 #include "acl_cpp/stdlib/string.hpp"
-
+#include "gson.h"
 namespace acl
 {
 	namespace gson
@@ -282,7 +282,7 @@ namespace acl
 			acl::json_node &gson(acl::json &json, const std::list<V> &objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::list<V>::const_iterator
+			for(typename std::list<V>::const_iterator
 				itr = objects.begin(); itr != objects.end(); itr++)
 			{
 				add_item(json, node, *itr);
@@ -294,32 +294,20 @@ namespace acl
 			acl::json_node &gson(acl::json &json, const std::list<V> *objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::list<V>::const_iterator
+			for(typename std::list<V>::const_iterator
 				itr = objects->begin(); itr != objects->end(); itr++)
 			{
 				add_item(json, node, *itr);
 			}
 			return node;
 		}
-		//int 
-		/*static inline
-			acl::json_node &gson(acl::json &json, std::list<int> *objects)
-		{
-			acl::json_node &node = json.create_array();
-			for(std::list<int>::const_iterator
-				itr = objects->begin(); itr != objects->end(); itr++)
-			{
-				add_item(json, node, *itr);
-			}
-			return node;
-		}*/
 
 		template<class V>
 		static inline acl::json_node &gson(acl::json &json,
 										   const std::vector<V> &objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::vector<V>::const_iterator
+			for(typename std::vector<V>::const_iterator
 				itr = objects.begin(); itr != objects.end(); itr++)
 			{
 				add_item(json, node, *itr);
@@ -343,7 +331,7 @@ namespace acl
 			static inline gson(acl::json &json, const std::map<K, V> &objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::map<K, V>::const_iterator itr = objects.begin();
+			for(typename std::map<K, V>::const_iterator itr = objects.begin();
 				itr != objects.end(); ++itr)
 			{
 				node.add_child(
@@ -360,7 +348,7 @@ namespace acl
 			static inline gson(acl::json &json, const std::map<K, V> *objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::map<K, V>::const_iterator itr = objects->begin();
+			for(typename std::map<K, V>::const_iterator itr = objects->begin();
 				itr != objects->end(); ++itr)
 			{
 				node.add_child(
@@ -377,7 +365,7 @@ namespace acl
 			static inline gson(acl::json &json, const std::map<K, V> &objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::map<K, V>::const_iterator itr = objects.begin();
+			for(typename std::map<K, V>::const_iterator itr = objects.begin();
 				itr != objects.end(); ++itr)
 			{
 				node.add_child(
@@ -393,7 +381,7 @@ namespace acl
 			static inline gson(acl::json &json, const std::map<K, V> *objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::map<K, V>::const_iterator itr = objects->begin();
+			for(typename std::map<K, V>::const_iterator itr = objects->begin();
 				itr != objects->end(); ++itr)
 			{
 				node.add_child(
@@ -410,7 +398,7 @@ namespace acl
 			static inline gson(acl::json &json, const std::map<K, V> &objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::map<K, V>::const_iterator itr = objects;
+			for(typename std::map<K, V>::const_iterator itr = objects;
 				itr != objects.end(); ++itr)
 			{
 				node.add_child(
@@ -429,7 +417,7 @@ namespace acl
 			static inline gson(acl::json &json, std::map<K, V> objects)
 		{
 			acl::json_node &node = json.create_array();
-			for(std::map<K, V>::iterator itr = objects.begin();
+			for(typename std::map<K, V>::iterator itr = objects.begin();
 				itr != objects.end(); itr++)
 			{
 				node.add_child(
@@ -447,7 +435,7 @@ namespace acl
 		{
 
 			acl::json_node &node = json.create_array();
-			for(std::map<T, V>::const_iterator
+			for(typename std::map<T, V>::const_iterator
 				itr = objects.begin(); itr != objects.end(); itr++)
 			{
 				const char *tag = get_value(itr->first);
@@ -463,7 +451,7 @@ namespace acl
 		{
 
 			acl::json_node &node = json.create_array();
-			for(std::map<T, V>::const_iterator
+			for(typename std::map<T, V>::const_iterator
 				itr = objects->begin(); itr != objects->end(); itr++)
 			{
 				const char *tag = get_value(itr->first);
@@ -474,6 +462,11 @@ namespace acl
 		}
 
 		//////////////////////////////////////////////////////////////////////
+		template <class T>
+		typename std::enable_if<std::is_class<T>::value,
+			std::pair<bool, std::string>>::type
+			static inline	gson(acl::json_node &node, T **obj);
+
 		template<class T>
 		static inline void del(T **obj)
 		{
@@ -590,22 +583,6 @@ namespace acl
 			return std::make_pair(true, "");
 		}
 
-		template <class T>
-		typename std::enable_if<std::is_class<T>::value,
-			std::pair<bool, std::string>>::type
-			static inline	gson(acl::json_node &node, T **obj)
-		{
-			*obj = new T();
-			std::pair<bool, std::string> result = gson(node, *obj);
-			if(result.first == false)
-			{
-				delete *obj;
-				*obj = NULL;
-			}
-			return result;
-		}
-
-
 		template<class T>
 		static inline std::pair<bool, std::string> 
 			gson(acl::json_node &node, std::list<T> *objs)
@@ -647,6 +624,21 @@ namespace acl
 			}
 			return std::make_pair(!!!objs->empty(), error_string);
 		}
+
+		template <class T>
+		typename std::enable_if<std::is_class<T>::value,
+			std::pair<bool, std::string>>::type
+			static inline	gson(acl::json_node &node, T **obj)
+		{
+			*obj = new T();
+			std::pair<bool, std::string> result = gson(node, *obj);
+			if(result.first == false)
+			{
+				delete *obj;
+				*obj = NULL;
+			}
+			return result;
+		}
 		/////////////////////////////////////map///////////////////////////////
 		
 		//int map
@@ -676,10 +668,10 @@ namespace acl
 			}
 			if(result.first == false)
 			{
-				for(std::map<K, T>::iterator itr = objs->begin();
-					itr != objs->end(); ++itr)
+				for(typename std::map<K, T>::iterator it = objs->begin();
+					it != objs->end(); ++it)
 				{
-					del(&itr->second);
+					del(&it->second);
 				}
 				objs->clear();
 				return result;
@@ -709,10 +701,10 @@ namespace acl
 			}
 			if(result.first == false)
 			{
-				for(std::map<K, T>::iterator itr = objs->begin();
-					itr != objs->end(); ++itr)
+				for(typename std::map<K, T>::iterator itr2 = objs->begin();
+					itr2 != objs->end(); ++itr2)
 				{
-					del(&itr->second);
+					del(&itr2->second);
 				}
 				objs->clear();
 				return result;
