@@ -250,14 +250,14 @@ namespace acl
 		// number
 		template<class T>
 		typename std::enable_if<is_number<T>::value, void>::type
-			static inline add_item(acl::json &json, acl::json_node &node, T value)
+			static inline add_item(acl::json &, acl::json_node &node, T value)
 		{
 			node.add_array_number(get_value(value));
 		}
 
 		template<class T>
 		typename std::enable_if<is_number<T>::value, void>::type
-			static inline add_item(acl::json &json, acl::json_node &node, T *value)
+			static inline add_item(acl::json &, acl::json_node &node, T *value)
 		{
 			node.add_array_number(get_value(value));
 		}
@@ -265,14 +265,14 @@ namespace acl
 		template<class T>
 		typename std::enable_if<std::is_floating_point<
 			typename std::remove_pointer<T>::type>::value, void>::type
-			static inline add_item(acl::json &json, acl::json_node &node, T value)
+			static inline add_item(acl::json &, acl::json_node &node, T value)
 		{
 			node.add_array_double(get_value(value));
 		}
 		//bool 
 		template<class T>
 		typename std::enable_if<is_bool<T>::value, void>::type
-			static inline add_item(acl::json &json, acl::json_node &node, T value)
+			static inline add_item(acl::json &, acl::json_node &node, T value)
 		{
 			node.add_array_bool(get_value(value));
 		}
@@ -340,7 +340,7 @@ namespace acl
 					get_value(itr->second))
 				);
 			}
-			return node; \
+			return node;
 		}
 		//define number map
 		template<class K, class V>
@@ -357,7 +357,7 @@ namespace acl
 					get_value(itr->second))
 				);
 			}
-			return node; \
+			return node;
 		}
 		//define floating map
 		template<class K, class V>
