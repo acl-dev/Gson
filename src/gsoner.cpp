@@ -409,7 +409,7 @@ namespace gson
 					parent_obj_t parent;
 					parent.level_ = get_level(level);
 					parent.name_ = token;
-					current_obj_.parent_obj_.push_back(parent);
+					
 					level = "public";
 
 					if (parent.level_ == parent_obj_t::e_protect ||
@@ -417,7 +417,11 @@ namespace gson
 					{
 						std::map<std::string, object_t>::const_iterator itr 
 							= objs_.find(token);
-						if (itr != objs_.end())
+						if(itr == objs_.end())
+						{
+							itr = objs_.find(get_namespace()+token);
+						}
+						if(itr != objs_.end())
 						{
 							for (std::list<field_t>::const_iterator 
 								 ii = itr->second.fields_.begin();
@@ -426,6 +430,7 @@ namespace gson
 							{
 								current_obj_.fields_.push_back(*ii);
 							}
+							current_obj_.parent_obj_.push_back(parent);
 						}
 					}
 				}
@@ -929,13 +934,17 @@ namespace gson
 				}
 				throw syntax_error();
 			}
-			else if(first == "singned" ||
+			else if(first == "unsigned"||
+					first == "signed" ||
 					first == "int" ||
-					first == "int" ||
+					first == "long" ||
+					first == "short" ||
+					first == "int16_t"||
+					first == "uint16_t" ||
 					first == "uint32_t" ||
 					first == "int32_t" ||
 					first == "int64_t" ||
-					first == "int64_t")
+					first == "uint64_t")
 			{
 				field_t f;
 				f.type_ = field_t::e_number;
