@@ -14,9 +14,13 @@ namespace acl
 	public:
 		gsoner ();
 		bool read_file(const char *filepath);
-		bool read_multi_file(std::vector<std::string> files);
+		bool read_multi_file(const std::vector<std::string>& files);
 		void parse_code();
 		void gen_gson();
+		void set_default_required();
+		void set_default_optional();
+		void set_header_filename(const std::string &filename);
+		void set_source_filename(const std::string &filename);
 	private:
 		enum code_parser_status_t
 		{
@@ -109,8 +113,7 @@ namespace acl
 		void flush();
 		void write_header(const std::string &data);
 		void write_source(const std::string &data);
-		void set_default_required();
-		void set_default_optional();
+	
 		bool check_define();
 		bool check_pragma();
 		char cc;

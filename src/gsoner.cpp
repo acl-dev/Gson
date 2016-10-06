@@ -46,6 +46,25 @@ namespace gson
 		name_.clear();
 	}
 
+	void gsoner::set_default_required()
+	{
+		default_ = true;
+	}
+
+	void gsoner::set_default_optional()
+	{
+		default_ = false;
+	}
+
+	void gsoner::set_header_filename(const std::string &filename)
+	{
+		gen_header_filename_ = filename;
+	}
+
+	void gsoner::set_source_filename(const std::string &filename)
+	{
+		gen_source_filename_ = filename;
+	}
 
 	gsoner::gsoner()
 	{
@@ -53,8 +72,8 @@ namespace gson
 		gen_header_ = NULL;
 		gen_source_ = NULL;
 		default_ = true;
-		gen_header_filename_ = "gson_gen.h";
-		gen_source_filename_ = "gson_gen.cpp";
+		gen_header_filename_ = "gson.h";
+		gen_source_filename_ = "gson.cpp";
 		default_delimiters_ = "\\\r\n\t ";
 	}
 
@@ -509,9 +528,9 @@ namespace gson
 		}
 		if(result)
 		{
-			if(commemt.find("Gson@optional") == std::string::npos)
+			if(commemt.find("Gson@optional") != std::string::npos)
 				required_ = false;
-			else if(commemt.find("Gson@required") == std::string::npos)
+			else if(commemt.find("Gson@required") != std::string::npos)
 				required_ = true;
 		}
 		return result;
@@ -682,7 +701,6 @@ namespace gson
 
 		if(status_ == e_struct_begin)
 		{
-			required_ = default_;
 			std::string lines;
 			skip_space();
 			while(true)
@@ -983,7 +1001,7 @@ namespace gson
 		return true;
 	}
 
-	bool gsoner::read_multi_file(std::vector<std::string> files)
+	bool gsoner::read_multi_file(const std::vector<std::string>& files)
 	{
 		for(std::vector<std::string>::const_iterator itr = files.begin();
 			itr != files.end(); itr++)
@@ -1053,7 +1071,10 @@ namespace gson
 					if(check_function())
 						continue;
 					if(check_member())
+					{
+						required_ = default_;
 						continue;
+					}
 
 					printf("%c", codes_[pos_]);
 					pos_++;
@@ -1191,15 +1212,7 @@ namespace gson
 		gen_source_->write(data.c_str(), data.size());
 	}
 
-	void gsoner::set_default_required()
-	{
-		default_ = true;
-	}
-
-	void gsoner::set_default_optional()
-	{
-		default_ = false;
-	}
+	
 
 	bool gsoner::check_define()
 	{
