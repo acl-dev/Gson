@@ -710,7 +710,8 @@ namespace acl
 
 		//object
 		template<class K,class T> 
-		typename std::enable_if<is_object<T>::value ,std::pair<bool, std::string>>::type 
+		typename std::enable_if<is_object<T>::value ,
+		std::pair<bool, std::string>>::type 
 			static inline expand(acl::json_node &node, std::map<K, T> *objs)
 		{
 			std::pair<bool, std::string> result;
