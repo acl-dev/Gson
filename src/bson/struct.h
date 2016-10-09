@@ -19,6 +19,7 @@ struct user_t
 
 struct group_t
 {
+	double double_;
 	std::string group_id;
 	user_t user;
 	std::list<user_t> users;

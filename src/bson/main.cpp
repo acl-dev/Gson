@@ -28,9 +28,13 @@ void test1 ()
 	return ;
 }
 
-
+void tt(int b,int i = 0)
+{
+	std::cout << i << std::endl;
+}
 int main ()
 {
+	tt(0);
 	for (int i = 0; i < 10000000; i ++)
 	{
 		test1 ();
