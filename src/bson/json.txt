@@ -1,0 +1,17 @@
+{
+    "group_id": "12345",
+    "user": {
+        "id": 1,
+        "username": "akzi"
+    },
+    "users": [
+        {
+            "id": 1,
+            "username": "akzi"
+        },
+        {
+            "id": 2,
+            "username": "akzi2"
+        }
+    ]
+}
