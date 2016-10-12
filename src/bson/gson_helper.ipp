@@ -3,56 +3,66 @@
 #include <string>
 #include <list>
 
+
+struct true_type
+{
+	const static bool value = true;
+};
+struct false_type
+{
+	const static bool value = false;
+};
+
 template<class T>
 struct _Is_number
-	: std::false_type
+	: false_type
 {
 };
 template<>
 struct _Is_number<unsigned short>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<signed short>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<unsigned int>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<signed int>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<unsigned long>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<signed long>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<long long>
-	: std::true_type
+	: true_type
 {
 };
 
 template<>
 struct _Is_number<unsigned long long>
-	: std::true_type
+	: true_type
 {
 };
 
@@ -66,11 +76,11 @@ struct is_number :
 
 //string
 template<class T>
-struct _Is_string :std::false_type
+struct _Is_string :false_type
 {
 };
 template<>
-struct _Is_string<std::string> :std::true_type
+struct _Is_string<std::string> :true_type
 {
 };
 template<class T>
@@ -83,19 +93,19 @@ struct is_string :
 //double
 
 template<class T>
-struct _Is_double :std::false_type
+struct _Is_double :false_type
 {
 };
 template<>
-struct _Is_double<float> :std::true_type
+struct _Is_double<float> :true_type
 {
 };
 template<>
-struct _Is_double<double> :std::true_type
+struct _Is_double<double> :true_type
 {
 };
 template<>
-struct _Is_double<long double> :std::true_type
+struct _Is_double<long double> :true_type
 {
 };
 template <class T>
@@ -109,11 +119,11 @@ struct is_double :
 };
 //char ptr. c string in cpp
 template<class T>
-struct _Is_char_ptr :std::false_type
+struct _Is_char_ptr :false_type
 {
 };
 template<>
-struct _Is_char_ptr<char*> :std::true_type
+struct _Is_char_ptr<char*> :true_type
 {
 };
 template<class T>
@@ -122,11 +132,11 @@ struct is_char_ptr :_Is_char_ptr<typename std::remove_cv<T>::type>
 };
 
 template<class T>
-struct _Is_bool :std::false_type
+struct _Is_bool :false_type
 {
 };
 template<>
-struct _Is_bool<bool> :std::true_type
+struct _Is_bool<bool> :true_type
 {
 };
 template<class T>
@@ -137,12 +147,12 @@ struct is_bool :
 };
 template<bool T>
 struct _Is_object
-	:std::false_type
+	:false_type
 {
 };
 
 template<>
-struct _Is_object<true> :std::true_type
+struct _Is_object<true> :true_type
 {
 };
 
@@ -166,7 +176,8 @@ typename std::enable_if<is_string<T>::value &&
 	return value.c_str();
 }
 template<class T>
-typename std::enable_if<is_string<T>::value && std::is_pointer<T>::value, const char *>::type
+typename std::enable_if<is_string<T>::value &&
+	std::is_pointer<T>::value, const char *>::type
 	static inline get_value(const T &value)
 {
 	return value->c_str();
@@ -219,14 +230,15 @@ static inline  get_value(const T *t)
 }
 template<class T>
 typename std::enable_if<!std::is_pointer<T>::value, bool>::type
- check_value(const T &, result_t *,const char *)
+static inline check_nullptr(const T &, result_t *,const char *)
 {
 	return true;
 }
 
 template<class T>
 typename std::enable_if<!std::is_pointer<T>::value, bool>::type
-check_value(const T *t, result_t *result, const char *error_point)
+static inline check_nullptr(const T *t, result_t *result, 
+							const char *error_point)
 {
 	if(t == NULL)
 	{
@@ -237,6 +249,24 @@ check_value(const T *t, result_t *result, const char *error_point)
 			result->second.append(error_point);
 			result->second.append("] null }");
 		}
+		return false;
+	}
+	return true;
+}
+
+template<class T>
+typename std::enable_if<!std::is_pointer<T>::value, bool>::type
+static inline check_nullptr(const T &)
+{
+	return true;
+}
+
+template<class T>
+typename std::enable_if<!std::is_pointer<T>::value, bool>::type
+static inline check_nullptr(const T *t)
+{
+	if(t == NULL)
+	{
 		return false;
 	}
 	return true;
@@ -278,8 +308,9 @@ static inline bool gson(bson_iter_t &itr, double *obj)
 	}
 	return false;
 }
-
-static inline bool gson(bson_iter_t &itr, std::string *obj)
+template<class T>
+typename std::enable_if<is_string<T>::value,bool>::type
+static inline gson(bson_iter_t &itr, T *obj)
 {
 	bson_type_t type = bson_iter_type(&itr);
 	if(type == BSON_TYPE_UTF8)
@@ -295,17 +326,20 @@ static inline bool gson(bson_iter_t &itr, std::string *obj)
 	return false;
 }
 
-static inline bool gson(const std::list<user_t> &users, bson_t &bson)
+template<class T>
+static inline bool gson(const std::list<T> &objs, bson_t &bson)
 {
 	int i = 0;
-	for(auto &itr : users)
+	for(auto &itr : objs)
 	{
-		bson_t user;
-		destroy_bson_t d_user(user);
-		bson_init(&user);
-		if(gson(itr, user) == false)
+		bson_t iter;
+		destroy_bson_t d_user(iter);
+		bson_init(&iter);
+		if(gson(itr, iter) == false)
 			return false;
-		if(bson_append_document(&bson, std::to_string(i).c_str(), -1, &user) == false)
+		if(bson_append_document(&bson, 
+		   std::to_string(i).c_str(), -1, &iter) == false)
+
 			return false;
 		i++;
 	}
@@ -326,16 +360,23 @@ static inline bool gson(bson_iter_t &iter, std::list<user_t> *obj)
 	return !!obj->size();
 }
 template<class T>
-static inline bool gson(bson_iter_t &itr, T**obj)
+typename std::enable_if<!std::is_pointer<T>::value, bool>::type
+static inline gson(bson_iter_t &itr, T**obj)
 {
 	*obj = new T;
-	return gson(itr, *obj);
+	if(gson(itr, *obj) == false)
+	{
+		delete *obj;
+		*obj = NULL;
+		return false;
+	}
+	return true;
 }
 
 static inline std::string to_text(const std::string &str)
 {
 	std::string result;
-	int pos = 0;
+	std::size_t pos = 0;
 	result.append("\"");
 	while(pos < str.size())
 	{

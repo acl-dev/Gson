@@ -5,7 +5,7 @@
 struct user_t
 {
 	int id;
-	std::string username;
+	std::string *username;
 	user_t ()
 	{
 

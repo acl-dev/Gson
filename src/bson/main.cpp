@@ -11,12 +11,16 @@ void test1 ()
 
 	bson_t bson;
 	assert (bson_init_from_json (&bson, json, -1, NULL));
+
 	bson_iter_t iter;
 	assert (bson_iter_init (&iter, &bson));
+	
 	group_t group;
 	gson (iter, group);
+	
 	bson_t bson2;
 	bson_init (&bson2);
+	
 	gson (group, bson2);
 	char *str = bson_as_json (&bson2, 0);
 

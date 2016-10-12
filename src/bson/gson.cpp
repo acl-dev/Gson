@@ -26,37 +26,42 @@ bool gson(bson_t &bson, user_t &obj)
 	return gson(iter, obj);
 }
 
-bool gson (const user_t &user, bson_t &bson, result_t *result)
+bool gson (const user_t &obj, bson_t &bson)
 {
-	if (bson_append_int32 (&bson, "id", -1, user.id) == false)
+	if (check_nullptr(obj.id) == false ||
+		bson_append_int32 (&bson, "id", -1, obj.id) == false)
 		return false;
-	if (bson_append_utf8 (&bson, "username", -1, user.username.c_str (), user.username.size ()) == false)
+
+	if (bson_append_utf8 (&bson, "username", -1,
+		get_value(obj.username), 
+		strlen(get_value(obj.username))) == false)
+
 		return false;
 	return true;
 }
-bool gson(const user_t *user, bson_t &bson, result_t *result)
+bool gson(const user_t *user, bson_t &bson)
 {
 	if(user == NULL)
 		return false;
-	return gson(*user, bson, result);
+	return gson(*user, bson);
 }
 
-bool gson (bson_iter_t &bson_iter, group_t &obj)
+bool gson (bson_iter_t &iter, group_t &obj)
 {
 	bson_iter_t user;
 	bson_iter_t users;
 
-	if (bson_iter_find (&bson_iter, "group_id") == false ||
-		gson (bson_iter, &obj.group_id) == false)
+	if (bson_iter_find (&iter, "group_id") == false ||
+		gson (iter, &obj.group_id) == false)
 		return false;
 
-	if (bson_iter_find (&bson_iter, "user") == false ||
-		bson_iter_recurse (&bson_iter, &user) == false ||
+	if (bson_iter_find (&iter, "user") == false ||
+		bson_iter_recurse (&iter, &user) == false ||
 		gson (user, obj.user) == false)
 		return false;
 
-	if (bson_iter_find (&bson_iter, "users") == false ||
-		bson_iter_recurse (&bson_iter, &users) == false ||
+	if (bson_iter_find (&iter, "users") == false ||
+		bson_iter_recurse (&iter, &users) == false ||
 		gson (users, &obj.users) == false)
 		return false;
 
@@ -69,7 +74,7 @@ bool gson(bson_t &bson, group_t &obj)
 		return false;
 	return gson(iter, obj);
 }
-bool gson (const group_t& obj, bson_t &bson, result_t *result)
+bool gson (const group_t& obj, bson_t &bson)
 {
 	bson_t user;
 	bson_t users;
@@ -78,11 +83,12 @@ bool gson (const group_t& obj, bson_t &bson, result_t *result)
 	destroy_bson_t d_user (user);
 	destroy_bson_t d_users (users);
 
-	if(check_value(obj.double_, result, "group_t.double_") == false ||
+	if(check_nullptr(obj.double_) == false ||
 	   bson_append_double(&bson, "double_", -1, get_value(obj.double_)) == false)
 		return false;
 
-	if (bson_append_utf8 (&bson, "group_id", -1, obj.group_id.c_str (), obj.group_id.size ()) == false)
+	if (bson_append_utf8 (&bson, "group_id", -1,get_value(obj.group_id),
+		strlen(get_value(obj.group_id))) == false)
 		return false;
 
 	if (gson (obj.user, user) == false)
@@ -98,9 +104,9 @@ bool gson (const group_t& obj, bson_t &bson, result_t *result)
 	return true;
 }
 
-bool gson(const group_t *group, bson_t &bson, result_t *result)
+bool gson(const group_t *group, bson_t &bson)
 {
 	if(group == NULL)
 		return false;
-	return gson(*group, bson, result);
+	return gson(*group, bson);
 }
