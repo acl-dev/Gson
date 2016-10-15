@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <list>
+#include "bson-types.h"
 
 struct user_t
 {
@@ -20,7 +21,9 @@ struct user_t
 struct group_t
 {
 	double double_;
+	double *double_ptr_;
 	std::string group_id;
+	bson_oid_t obj_id_;
 	user_t user;
 	std::list<user_t> users;
 };

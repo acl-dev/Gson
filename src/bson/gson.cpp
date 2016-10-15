@@ -51,8 +51,20 @@ bool gson (bson_iter_t &iter, group_t &obj)
 	bson_iter_t user;
 	bson_iter_t users;
 
+	if(bson_iter_find(&iter, "double_") == false ||
+	   gson(iter, &obj.double_) == false)
+		return false;
+
+	if(bson_iter_find(&iter, "double_ptr_") == false ||
+	   gson(iter, &obj.double_ptr_) == false)
+		return false;
+
 	if (bson_iter_find (&iter, "group_id") == false ||
 		gson (iter, &obj.group_id) == false)
+		return false;
+
+	if(bson_iter_find(&iter, "obj_id_") == false ||
+	   gson(iter, &obj.obj_id_) == false)
 		return false;
 
 	if (bson_iter_find (&iter, "user") == false ||
@@ -83,22 +95,22 @@ bool gson (const group_t& obj, bson_t &bson)
 	destroy_bson_t d_user (user);
 	destroy_bson_t d_users (users);
 
-	if(check_nullptr(obj.double_) == false ||
-	   bson_append_double(&bson, "double_", -1, get_value(obj.double_)) == false)
+	if(bson_append_obj(bson,"double_" ,obj.double_) == false)
 		return false;
 
-	if (bson_append_utf8 (&bson, "group_id", -1,get_value(obj.group_id),
-		strlen(get_value(obj.group_id))) == false)
+	if(bson_append_obj(bson, "double_ptr_", obj.double_ptr_) == false)
 		return false;
 
-	if (gson (obj.user, user) == false)
-		return false;
-	if (bson_append_document (&bson, "user", -1, &user) == false)
+	if(bson_append_obj(bson, "group_id", obj.group_id) == false)
 		return false;
 
-	if (gson (obj.users, users) == false)
+	if(bson_append_obj(bson, "obj_id_", obj.obj_id_) == false)
 		return false;
-	if (bson_append_array (&bson, "users", -1, &users) == false)
+
+	if(bson_append_obj(bson, "user", obj.user) == false)
+		return false;
+
+	if(bson_append_obj(bson, "users", obj.users) == false)
 		return false;
 
 	return true;
