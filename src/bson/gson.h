@@ -2,7 +2,7 @@
 #include "bson.h"
 #include "struct.h"
 
-using result_t = std::pair<bool, std::string>;
+typedef std::pair<bool, std::string> result_t;
 
 bool gson(bson_iter_t &iter, user_t &obj);
 bool gson(bson_iter_t &iter, user_t *obj); 

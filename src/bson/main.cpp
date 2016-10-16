@@ -7,9 +7,9 @@
 
 void test1 ()
 {
-	const char *json = "{ \"group_id\" : \"12345\", \"user\" : { \"id\" : 1, \"username\" : \"akzi\" }, \"users\" : [ { \"id\" : 1, \"username\" : \"akzi\" }, { \"id\" : 2, \"username\" : \"akzi2\" } ] }";
-
+	const char *json = "{ \"double_\" : 0.11111, \"double_ptr_\" : 0.2222, \"group_id\" : \"12345\", \"obj_id_\" : { \"$oid\" : \"353830333063306239316630\" }, \"user\" : { \"id\" : 1, \"username\" : \"akzi\" }, \"users\" : [ { \"id\" : 1, \"username\" : \"akzi\" }, { \"id\" : 2, \"username\" : \"akzi2\" } ] }";
 	bson_t bson;
+
 	assert (bson_init_from_json (&bson, json, -1, NULL));
 
 	bson_iter_t iter;
@@ -20,7 +20,6 @@ void test1 ()
 	
 	bson_t bson2;
 	bson_init (&bson2);
-	
 	gson (group, bson2);
 	char *str = bson_as_json (&bson2, 0);
 
