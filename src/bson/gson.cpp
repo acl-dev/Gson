@@ -2,25 +2,33 @@
 #include "gson_helper.ipp"
 
 
-bool gson (bson_iter_t &iter, user_t &obj)
+std::pair<bool, std::string> 
+gson (bson_iter_t &iter, user_t &obj)
 {
-	if (bson_get_obj(iter, "id",&obj.id) == false)
-		return false;
+	std::pair<bool, std::string> result;
+	result.first = true;
+	result.second = "";
 
-	if(bson_get_obj(iter, "username", &obj.username) == false)
-		return false;
+	if ( result = bson_get_obj(iter, "id",&obj.id), !result.first)
+		return result;
 
-	return true;
+	if(result = bson_get_obj(iter, "username", &obj.username), !result.first)
+		return result;
+
+	return result;
 }
-bool gson(bson_iter_t &iter, user_t *obj)
+std::pair<bool, std::string> gson(bson_iter_t &iter, user_t *obj)
 {
 	return gson(iter, *obj);
 }
-bool gson(bson_t &bson, user_t &obj)
+std::pair<bool, std::string> gson(bson_t &bson, user_t &obj)
 {
 	bson_iter_t iter;
+	std::pair<bool, std::string> result;
+	result.first = true;
+	result.second = "";
 	if(bson_iter_init(&iter, &bson) == false)
-		return false;
+		return std::make_pair(false, "bson_iter_init failed");
 	return gson(iter, obj);
 }
 
@@ -39,33 +47,35 @@ bool gson(const user_t *user, bson_t &bson)
 	return gson(*user, bson);
 }
 
-bool gson (bson_iter_t &iter, group_t &obj)
+result_t gson (bson_iter_t &iter, group_t &obj)
 {
-	if(bson_get_obj(iter,"double_", &obj.double_) == false)
-		return false;
+	std::pair<bool, std::string> result(true,"");
 
-	if(bson_get_obj(iter, "double_ptr_", &obj.double_ptr_) == false)
-		return false;
+	if(result = bson_get_obj(iter,"double_", &obj.double_), !result.first)
+		return result;
 
-	if (bson_get_obj(iter,"group_id", &obj.group_id) == false)
-		return false;
+	if(result = bson_get_obj(iter, "double_ptr_", &obj.double_ptr_), !result.first)
+		return result;
 
- 	if(bson_get_obj(iter, "obj_id_", &obj.obj_id_) == false)
- 		return false;
+	if (result = bson_get_obj(iter,"group_id", &obj.group_id), !result.first)
+		return result;
 
-	if (bson_get_obj(iter,"user", &obj.user) == false)
-		return false;
+ 	if(result = bson_get_obj(iter, "obj_id_", &obj.obj_id_), !result.first)
+ 		return result;
 
-	if(bson_get_obj(iter, "users", &obj.users) == false)
-		return false;
+	if (result = bson_get_obj(iter,"user", &obj.user), !result.first)
+		return result;
 
-	return true;
+	if(result = bson_get_obj(iter, "users", &obj.users), !result.first)
+		return result;
+
+	return result;
 }
-bool gson(bson_t &bson, group_t &obj)
+result_t gson(bson_t &bson, group_t &obj)
 {
 	bson_iter_t iter;
 	if(bson_iter_init(&iter, &bson) == false)
-		return false;
+		return std::make_pair(false, "bson_iter_init");
 	return gson(iter, obj);
 }
 bool gson (const group_t& obj, bson_t &bson)
