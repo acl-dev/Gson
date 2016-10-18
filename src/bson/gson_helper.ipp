@@ -2,6 +2,7 @@
 #include "bson.h"
 #include <string>
 #include <list>
+#include <vector>
 
 
 struct true_type
@@ -449,6 +450,19 @@ std::pair <bool, std::string> bson_get_obj(bson_iter_t &itr, const char *obj_nam
 	}
 	return std::make_pair(false, bson_type_to_string(type) + " type error");
 }
+
+template<class T>
+static inline std::pair <bool, std::string>
+gson(bson_iter_t &iter, std::list<T> *obj);
+
+template<class T>
+static inline std::pair <bool, std::string>
+gson(bson_iter_t &iter, std::vector<T> *obj);
+
+template<class K, class T>
+static inline std::pair <bool, std::string>
+gson(bson_iter_t &iter, std::map<K, T> *obj);
+
 //bson to obj
 template<class T>
 static inline std::pair <bool, std::string>
@@ -457,15 +471,51 @@ gson(bson_iter_t &iter, std::list<T> *obj)
 	std::pair<bool, std::string > result;
 	while(bson_iter_next(&iter))
 	{
-		bson_iter_t user_iter;
-		if(bson_iter_recurse(&iter, &user_iter) == false)
+		bson_iter_t child;
+		if(bson_iter_recurse(&iter, &child) == false)
 			return std::make_pair(false,"bson_iter_recurse");
-		user_t user;
-		if(result = gson(user_iter, &user), !result.first)
+		T tmp;
+		if(result = gson(child, &tmp), !result.first)
 			return result;
-		obj->push_back(user);
+		obj->push_back(tmp);
 	}
 	return std::make_pair(!!obj->size(),"");
+}
+//vector
+template<class T>
+static inline std::pair <bool, std::string>
+gson(bson_iter_t &iter, std::vector<T> *obj)
+{
+	std::pair<bool, std::string > result;
+	while(bson_iter_next(&iter))
+	{
+		bson_iter_t child;
+		if(bson_iter_recurse(&iter, &child) == false)
+			return std::make_pair(false, "bson_iter_recurse");
+		T tmp;
+		if(result = gson(child, &tmp), !result.first)
+			return result;
+		obj->push_back(tmp);
+	}
+	return std::make_pair(!!obj->size(), "");
+}
+//map
+template<class K, class T>
+static inline std::pair <bool, std::string>
+gson(bson_iter_t &iter, std::map<K, T> *obj)
+{
+	std::pair<bool, std::string > result;
+	while(bson_iter_next(&iter))
+	{
+		bson_iter_t child;
+		if(bson_iter_recurse(&iter, &child) == false)
+			return std::make_pair(false, "bson_iter_recurse");
+		T tmp;
+		if(result = gson(child, &tmp), !result.first)
+			return result;
+		obj->insert(std::make_pair(bson_iter_key(&iter), tmp));
+	}
+	return std::make_pair(!!obj->size(), "");
 }
 
 template<class T>
@@ -501,21 +551,40 @@ bson_get_obj(bson_iter_t &itr, const char *obj_name, T**obj)
 }
 
 // obj to bson
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, int32_t*const obj)
+
+template<class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::list<T> &objs);
+
+template<class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::list<T> *objs);
+
+template<class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::vector<T> &objs);
+
+template<class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::vector<T> *objs);
+
+template<class K, class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::map<K, T> &objs);
+
+template<class K, class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::map<K, T> *objs);
+
+static inline bool gson(bson_t &bson, const char *obj_name, int32_t*const obj)
 {
 	if(obj == NULL ||
 	   bson_append_int32(&bson, obj_name, strlen(obj_name), *obj) == false)
 		return false;
 	return true;
 }
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, int32_t obj)
+static inline bool gson(bson_t &bson, const char *obj_name, int32_t obj)
 {
 	if(bson_append_int32(&bson, obj_name, strlen(obj_name), obj) == false)
 		return false;
 	return true;
 }
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, double *const obj)
+static inline bool gson(bson_t &bson, const char *obj_name, double *const obj)
 {
 	if( obj == NULL || 
 	   bson_append_double(&bson, obj_name, strlen(obj_name), *obj) == false)
@@ -523,14 +592,14 @@ static inline bool bson_append_obj(bson_t &bson, const char *obj_name, double *c
 	return true;
 }
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, double obj)
+static inline bool gson(bson_t &bson, const char *obj_name, double obj)
 {
 	if(bson_append_double(&bson, obj_name, strlen(obj_name), obj) == false)
 		return false;
 	return true;
 }
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, char *const obj)
+static inline bool gson(bson_t &bson, const char *obj_name, char *const obj)
 {
 	if(obj == NULL ||
 	   bson_append_utf8(&bson, obj_name,strlen(obj_name),obj, strlen(obj)) == false)
@@ -538,14 +607,14 @@ static inline bool bson_append_obj(bson_t &bson, const char *obj_name, char *con
 	return true;
 }
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const std::string &obj)
+static inline bool gson(bson_t &bson, const char *obj_name, const std::string &obj)
 {
 	if(bson_append_utf8(&bson, obj_name, strlen(obj_name), obj.c_str(), obj.size()) == false)
 		return false;
 	return true;
 }
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, std::string *const obj)
+static inline bool gson(bson_t &bson, const char *obj_name, std::string *const obj)
 {
 	if(obj == NULL ||
 		bson_append_utf8(&bson, obj_name, strlen(obj_name), obj->c_str(), obj->size()) == false)
@@ -571,7 +640,7 @@ static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const acl
 
 #endif
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, bson_oid_t *const obj)
+static inline bool gson(bson_t &bson, const char *obj_name, bson_oid_t *const obj)
 {
 	if(obj == NULL ||
 	   bson_append_oid(&bson, obj_name, strlen(obj_name), obj) == false)
@@ -579,7 +648,7 @@ static inline bool bson_append_obj(bson_t &bson, const char *obj_name, bson_oid_
 	return true;
 }
 
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const bson_oid_t &obj)
+static inline bool gson(bson_t &bson, const char *obj_name, const bson_oid_t &obj)
 {
 	if(bson_append_oid(&bson, obj_name, strlen(obj_name), &obj) == false)
 		return false;
@@ -587,31 +656,33 @@ static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const bso
 }
 
 template<class T>
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const T &obj)
+static inline bool gson(bson_t &bson, const char *obj_name, const T &obj)
 {
 	bson_t child;
 	destroy_bson_t d(child);
 	bson_init(&child);
 	if(gson(obj, child) == false)
 		return false;
-	if(bson_append_document(&bson, "obj_name", strlen(obj_name), &child) == false)
+	if(bson_append_document(&bson, obj_name, strlen(obj_name), &child) == false)
 		return false;
 	return true;
 }
 
 template<class T>
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const std::list<T> &objs)
+static inline bool gson(bson_t &bson, const char *obj_name, const std::list<T> &objs)
 {
 	int i = 0;
 	bson_t child;
 	bson_init(&child);
 	destroy_bson_t d(child);
-	for(auto &itr : objs)
+	for(std::list<T>::const_iterator itr = objs.begin();
+		itr != objs.end();
+		++itr)
 	{
 		bson_t child2;
 		destroy_bson_t d2(child2);
 		bson_init(&child2);
-		if(gson(itr, child2) == false)
+		if(gson(*itr, child2) == false)
 			return false;
 		if(bson_append_document(&child,
 		   std::to_string(i).c_str(), -1, &child2) == false)
@@ -623,15 +694,77 @@ static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const std
 	return true;
 }
 template<class T>
-static inline bool bson_append_obj(bson_t &bson, const char *obj_name, const std::list<T> *objs)
+static inline bool gson(bson_t &bson, const char *obj_name, const std::list<T> *objs)
 {
 	if(objs == NULL)
 		return false;
-	return bson_append_obj(bson, obj_name, *objs);
+	return gson(bson, obj_name, *objs);
 }
 
+template<class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::vector<T> &objs)
+{
+	int i = 0;
+	bson_t child;
+	bson_init(&child);
+	destroy_bson_t d(child);
+	for(std::vector<T>::const_iterator  itr = objs.begin();
+		itr != objs.end();
+		++itr)
+	{
+		bson_t child2;
+		destroy_bson_t d2(child2);
+		bson_init(&child2);
+		if(gson(*itr, child2) == false)
+			return false;
+		if(bson_append_document(&child,
+		   std::to_string(i).c_str(), -1, &child2) == false)
+			return false;
+		i++;
+	}
+	if(bson_append_array(&bson, obj_name, -1, &child) == false)
+		return false;
+	return true;
+}
+template<class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::vector<T> *objs)
+{
+	if(objs == NULL)
+		return false;
+	return gson(bson, obj_name, *objs);
+}
 
-
+template<class K, class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::map<K, T> &objs)
+{
+	int i = 0;
+	bson_t child;
+	bson_init(&child);
+	destroy_bson_t d(child);
+	for(std::map<K, T>::const_iterator  itr = objs.begin();
+		itr != objs.end();
+		++itr)
+	{
+		bson_t child2;
+		destroy_bson_t d2(child2);
+		bson_init(&child2);
+		if(gson(itr->second, child2) == false)
+			return false;
+		if(bson_append_document(&child, get_value(itr->first), -1, &child2) == false)
+			return false;
+		i++;
+	}
+	if(bson_append_document(&bson, obj_name, -1, &child) == false)
+		return false;
+	return true;
+}
+template<class K, class T>
+static inline bool gson(bson_t &bson, const char *obj_name, const std::map<K,T> *objs)
+{
+	if(objs == NULL)
+		return false;
+	return gson(bson, obj_name, *objs);
+}
 
 static inline std::string to_text(const std::string &str)
 {

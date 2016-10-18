@@ -4,10 +4,14 @@
 #include <list>
 #include "gson.h"
 #include "gson_helper.ipp"
+#include <string.h>
 
 void test1 ()
 {
-	const char *json = "{ \"double_\" : 0.11111, \"double_ptr_\" : 0.2222, \"group_id\" : \"12345\", \"obj_id_\" : { \"$oid\" : \"353830333063306239316630\" }, \"user\" : { \"id\" : 1, \"username\" : \"akzi\" }, \"users\" : [ { \"id\" : 1, \"username\" : \"akzi\" }, { \"id\" : 2, \"username\" : \"akzi2\" } ] }";
+	const char *json = "{ \"double_\" : 0.11111, \"double_ptr_\" : 0.2222, \"group_id\" : \"12345\", \"obj_id_\" : { \"$oid\" : \"353830333063306239316630\" }, \"user\" : { \"id\" : 1, \"username\" : \"akzi\" }, \"list_users\" : [ { \"id\" : 1, \"username\" : \"akzi\" }, { \"id\" : 2, \"username\" : \"akzi2\" } ], "
+		"\"vector_users\" : [ { \"id\" : 1, \"username\" : \"akzi\" }, { \"id\" : 2, \"username\" : \"akzi2\" } ], "
+		"\"map_users\" : { \"user1\":{ \"id\" : 1, \"username\" : \"akzi\" }, \"user2\" : { \"id\" : 2, \"username\" : \"akzi2\" } }, \"map_list_users\":{\"list1\" : [ { \"id\" : 1, \"username\" : \"akzi\" }, { \"id\" : 2, \"username\" : \"akzi2\" } ] }, "
+		"\"list_map_users\":[{ \"user1\":{ \"id\" : 1, \"username\" : \"akzi\" }, \"user2\" : { \"id\" : 2, \"username\" : \"akzi2\" } } ] }";
 	bson_t bson;
 
 	assert (bson_init_from_json (&bson, json, -1, NULL));
@@ -18,14 +22,17 @@ void test1 ()
 	group_t group;
 	gson (iter, group);
 	
-// 	bson_t bson2;
-// 	bson_init (&bson2);
-// 	gson (group, bson2);
-// 	char *str = bson_as_json (&bson2, 0);
-// 
-// 	std::string text = to_text (str);
-// 
-// 	bson_free (str);
+	bson_t bson2;
+	bson_init (&bson2);
+	gson (group, bson2);
+	char *str1 = bson_as_json (&bson2, 0);
+	char *str2 = bson_as_json(&bson, 0);
+
+	std::string text = to_text (str1);
+	std::cout << (strcmp(str2, str1) == 0 ? "OK" : "failed");
+
+	bson_free (str1);
+	bson_free(str2);
 	bson_destroy (&bson);
 	//bson_destroy (&bson2);
 	return ;
