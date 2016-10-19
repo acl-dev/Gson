@@ -5,6 +5,7 @@
 #include "gson.h"
 #include "gson_helper.ipp"
 #include <string.h>
+#include "gsoner.hpp"
 
 void test1 ()
 {
@@ -19,12 +20,12 @@ void test1 ()
 	bson_iter_t iter;
 	assert (bson_iter_init (&iter, &bson));
 	
-	group_t group;
-	gson (iter, group);
+	//group_t group;
+	//gson (iter, group);
 	
 	bson_t bson2;
 	bson_init (&bson2);
-	gson (group, bson2);
+	//gson (group, bson2);
 	char *str1 = bson_as_json (&bson2, 0);
 	char *str2 = bson_as_json(&bson, 0);
 
@@ -38,16 +39,19 @@ void test1 ()
 	return ;
 }
 
-void tt(int b,int i = 0)
+void tt(int)
 {
-	std::cout << i << std::endl;
+	acl::gsoner gr;
+	gr.read_file("struct.h");
+	gr.parse_code();
+	gr.gen_bson();
 }
 int main ()
 {
 	tt(0);
-	for (int i = 0; i < 10000000; i ++)
-	{
-		test1 ();
-	}
+// 	for (int i = 0; i < 10000000; i ++)
+// 	{
+// 		test1 ();
+// 	}
 	return 0;
 }
