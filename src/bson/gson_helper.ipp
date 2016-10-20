@@ -342,10 +342,10 @@ namespace acl
 	}
 	template<class T>
 	static inline result_t
-		bson_get_obj(bson_iter_t &itr, T**obj);
+		gson(bson_iter_t &itr, T**obj);
 
 	//bson_oid_t *
-	static inline  result_t bson_get_obj(bson_iter_t &itr, bson_oid_t *obj)
+	static inline  result_t gson(bson_iter_t &itr, bson_oid_t *obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_OID)
@@ -357,7 +357,7 @@ namespace acl
 	}
 
 	//bool *
-	static inline result_t bson_get_obj(bson_iter_t &itr, bool *obj)
+	static inline result_t gson(bson_iter_t &itr, bool *obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_BOOL)
@@ -369,7 +369,7 @@ namespace acl
 	}
 
 	//int32_t *
-	static inline result_t bson_get_obj(bson_iter_t &itr, int32_t *obj)
+	static inline result_t gson(bson_iter_t &itr, int32_t *obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_INT32)
@@ -380,7 +380,7 @@ namespace acl
 		return std::make_pair(false, bson_type_to_string(type) + " type error");
 	}
 	//int32_t *
-	static inline result_t bson_get_obj(bson_iter_t &itr, int64_t *obj)
+	static inline result_t gson(bson_iter_t &itr, int64_t *obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_INT64)
@@ -392,7 +392,7 @@ namespace acl
 	}
 
 	//double *
-	static inline result_t bson_get_obj(bson_iter_t &itr, double *obj)
+	static inline result_t gson(bson_iter_t &itr, double *obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_DOUBLE)
@@ -405,7 +405,7 @@ namespace acl
 	//string *
 	template<class T>
 	typename std::enable_if<is_string<T>::value, result_t >::type
-		static inline bson_get_obj(bson_iter_t &itr, T *obj)
+		static inline gson(bson_iter_t &itr, T *obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_UTF8)
@@ -421,8 +421,7 @@ namespace acl
 		return std::make_pair(false, bson_type_to_string(type) + " type error");
 	}
 	//char **
-	static inline
-		result_t bson_get_obj(bson_iter_t &itr, char **obj)
+	static inline result_t gson(bson_iter_t &itr, char **obj)
 	{
 		bson_type_t type = bson_iter_type(&itr);
 		if(type == BSON_TYPE_UTF8)
@@ -510,11 +509,11 @@ namespace acl
 
 	template<class T>
 	static inline result_t
-		bson_get_obj(bson_iter_t &itr, T**obj)
+		gson(bson_iter_t &itr, T**obj)
 	{
 		*obj = new T;
 		result_t result(true, "");
-		if(result = bson_get_obj(itr, *obj), !result.first)
+		if(result = gson(itr, *obj), !result.first)
 		{
 			delete *obj;
 			*obj = NULL;

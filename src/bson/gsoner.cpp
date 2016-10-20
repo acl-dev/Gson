@@ -267,6 +267,7 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	return str;
 }
 
+
 gsoner::function_code_t gsoner::gen_pack_bson_code(const object_t &obj)
 {
 	function_code_t code;
@@ -298,6 +299,57 @@ gsoner::function_code_t gsoner::gen_pack_bson_code(const object_t &obj)
 
 	return code;
 }
+std::string gsoner::get_unpack_bson_code(const field_t &field)
+{
+	std::string str;
+	if(field.type_ == field_t::e_list ||
+	   field.type_ == field_t::e_map ||
+	   field.type_ == field_t::e_object)
+	{
+		str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\") == false)\n";
+		str += "        return std::make_pair(false, \"bison_iter_find [" + field.name_ + "] failed.\");\n";
+		str += "    bson_iter_t " + field.name_ + "_iter;\n";
+		str += "    if(bson_iter_recurse(&$itr, &"+field.name_+"_iter) == false)\n";
+		str += "        return std::make_pair(false, \"bson_iter_recurse [" + field.name_ + "] failed.\");\n";
+		str += "    if(result = gson("+field.name_+"_iter, &$obj."+field.name_+"), !result.first)\n";
+		str += "        return std::make_pair(false, \"gson[" + field.name_ + "] failed:[\"+result.second+\"]\");\n";
+	}
+	else
+	{
+		str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\") == false)\n";
+		str += "        return std::make_pair(false, \"bison_iter_find [" + field.name_ + "] failed\");\n";
+		str += "    if(result = gson($itr, &$obj." + field.name_ + "), !result.first)\n";
+		str += "        return std::make_pair(false, \"gson[" + field.name_ + "] failed:[\"+result.second+\"]\");\n";
+	}
+	return str;
+}
+
+acl::gsoner::function_code_t gsoner::gen_unpack_bson_code(const object_t &obj)
+{
+	function_code_t code;
+
+	std::string str;
+
+	str += "result_t gson(bson_iter_t &$itr," + obj.name_ + " $obj)\n"
+		"{\n\n"
+		"    result_t result;\n";
+
+	for(object_t::fields_t::const_iterator itr = obj.fields_.begin();
+		itr != obj.fields_.end();
+		++itr)
+	{
+		str += get_unpack_bson_code(*itr) + "\n";
+	}
+
+	str += "    return std::make_pair(true,\"\");\n}";
+
+	code.definition_ = str;
+	return code;
+}
+
+
+
+
 gsoner::function_code_t gsoner::gen_pack_code(const object_t &obj)
 {
 	function_code_t code;
@@ -1594,20 +1646,20 @@ void gsoner::gen_bson()
 		itr != objs_.end(); ++itr)
 	{
 		function_code_t pack = gen_pack_bson_code(itr->second);
-		function_code_t unpack = gen_unpack_code(itr->second);
+		function_code_t unpack = gen_unpack_bson_code(itr->second);
 
 		write_header(('\n' + tab_ + "//" + itr->second.name_));
 		write_header(('\n' + tab_ + pack.declare2_));
 		write_header(('\n' + tab_ + pack.declare_));
 		write_header(('\n' + tab_ + pack.declare_ptr_));
-		//write_header('\n' + tab_ + unpack.declare_);
-		//write_header('\n' + tab_ + unpack.declare_ptr_);
+		write_header('\n' + tab_ + unpack.declare_);
+		write_header('\n' + tab_ + unpack.declare_ptr_);
 
 		write_source(add_4space(pack.definition_));
 		write_source(add_4space(pack.definition_ptr_));
 		write_source(add_4space(pack.definition2_));
-		//write_source(add_4space(unpack.definition_));
-		//write_source(add_4space(unpack.definition_ptr_));
+		write_source(add_4space(unpack.definition_));
+		write_source(add_4space(unpack.definition_ptr_));
 	}
 
 	write_header(namespace_end);

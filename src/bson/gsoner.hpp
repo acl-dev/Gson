@@ -141,6 +141,9 @@ private:
 	bool check_define();
 	bool check_pragma();
 	std::list<std::string> get_initializelist ();
+
+	function_code_t gen_unpack_bson_code(const object_t &second);
+	std::string get_unpack_bson_code(const field_t &fileld);
 	char cc;
 	int pos_;
 	int max_pos_;
