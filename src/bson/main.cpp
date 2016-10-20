@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include "struct.h"
 #include "gson.h"
 #include "gson_helper.ipp"
 #include <string.h>
@@ -29,7 +30,7 @@ void test1 ()
 	char *str1 = bson_as_json (&bson2, 0);
 	char *str2 = bson_as_json(&bson, 0);
 
-	std::string text = to_text (str1);
+	std::string text = acl::to_text(str1);
 	std::cout << (strcmp(str2, str1) == 0 ? "OK" : "failed");
 
 	bson_free (str1);

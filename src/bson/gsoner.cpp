@@ -167,19 +167,19 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	if (field.type_ == field_t::e_bool ||
 		field.type_ == field_t::e_bool_ptr)
 	{
-		str += "if(bson_append_double(&bson, \""+ field.name_ + "\", -1, get_value(obj." + field.name_+")) == false)\n";
+		str += "if(bson_append_double(&$bson, \""+ field.name_ + "\", -1, get_value($obj." + field.name_+")) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_number)
 	{
-		str += "if(bson_append_int32(&bson, \"" + field.name_ + "\", -1, get_value(obj." + field.name_ + ")) == false)\n";
+		str += "if(bson_append_int32(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + ")) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_int64)
 	{
-		str += "if(bson_append_int64(&bson, \"" + field.name_ + "\", -1, get_value(obj." + field.name_ + ")) == false)\n";
+		str += "if(bson_append_int64(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + ")) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
@@ -187,13 +187,13 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 			  field.type_ == field_t::e_cstr ||
 			  field.type_ == field_t::e_ccstr)
 	{
-		str += "if(bson_append_utf8(&bson, \"" + field.name_ + "\", -1, get_value(obj." + field.name_ + ")) == false)\n";
+		str += "if(bson_append_utf8(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + "), -1) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_double)
 	{
-		str += "if(bson_append_double(&bson, \"" + field.name_ + "\", -1, get_value(obj." + field.name_ + ")) == false)\n";
+		str += "if(bson_append_double(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + ")) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
@@ -203,24 +203,59 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 			  field.type_ == field_t::e_vector)
 	{
 		str += "bson_t  " + field.name_ + ";\n";
-		str += "if(gson(bson, obj." + field.name_ + ") == false)\n";
+		str += tab_;
+		str += "bson_init(&" + field.name_ + ");\n";
+		str += tab_;
+		str += "destroy_bson_t destroy_" + field.name_ + "(" + field.name_ + ");\n";
+		str += tab_;
+		str += "if(gson($obj." + field.name_ + ","+ field.name_ +") == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 		str += tab_;
-		str += "if(bson_append_array(&bson,\""+field.name_+"\",-1, &"+field.name_+") == false)\n";
+		str += "if(bson_append_array(&$bson,\""+field.name_+"\", -1, &"+field.name_+") == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_map)
 	{
 		str += "bson_t " + field.name_ + ";\n";
-		str += "if(gson(bson, obj." + field.name_ + ") == false)\n";
+		str += tab_;
+		str += "bson_init(&" + field.name_ + ");\n";
+		str += tab_;
+		str += "destroy_bson_t destroy_"+ field.name_ +"("+ field.name_ +");\n";
+		str += tab_;
+		str += "if(gson($obj." + field.name_ + ","+ field.name_ +") == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 		str += tab_;
-		str += "if(bson_append_document(&bson,\"" + field.name_ + "\",-1, &" + field.name_ + ") == false)\n";
+		str += "if(bson_append_document(&$bson,\"" + field.name_ + "\", -1, &" + field.name_ + ") == false)\n";
+		str += tab_;
+		str += tab_;
+		str += "return false;\n";
+	}
+	else if (field.type_ == field_t::e_bson_oid)
+	{
+		str += "if(bson_append_oid(&$bson,\"" + field.name_ + "\", -1, &$obj." + field.name_ + ") == false)\n";
+		str += tab_;
+		str += tab_;
+		str += "return false;\n";
+	}
+	else if (field.type_ == field_t::e_object)
+	{
+		str += "bson_t " + field.name_ + ";\n";
+		str += tab_;
+		str += "bson_init(&" + field.name_ + ");\n";
+		str += tab_;
+		str += "destroy_bson_t destroy_" + field.name_ + "(" + field.name_ + ");\n";
+		str += tab_;
+		str += "if(gson($obj." + field.name_ +", "+ field.name_ + ") == false)\n";
+		str += tab_;
+		str += tab_;
+		str += "return false;\n";
+		str += tab_;
+		str += "if(bson_append_document(&$bson,\"" + field.name_ + "\", -1, &" + field.name_ + ") == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
@@ -237,19 +272,29 @@ gsoner::function_code_t gsoner::gen_pack_bson_code(const object_t &obj)
 	function_code_t code;
 
 	std::string str;
-	str += "bool gson (const " + obj.name_ + "&obj, bson_t &bson)\n";
-	str += "{";
+	str += "bool gson (const " + obj.name_ + "&$obj, bson_t &$bson)\n";
+	str += "{\n\n";
 
 
 	for (object_t::fields_t::const_iterator itr = obj.fields_.begin();
 		 itr != obj.fields_.end();
 		 ++itr)
 	{
-		str += get_pack_bson_code(*itr);
+		str += get_pack_bson_code(*itr)+"\n";
 	}
-	str + "}";
+	str += tab_ + "return true;\n";
+	str += "}";
 
 	code.definition_ = str;
+	code.definition_ptr_ = "bool gson (const " + obj.name_ + "*$obj, bson_t &$bson)\n"
+		"{\n"
+		"    if($obj == NULL)\n"
+		"        return false;\n"
+		"    return gson(*$obj,$bson);\n}";
+
+	code.declare_ptr_ = "bool gson (const " + obj.name_ + "*obj, bson_t &$bson);";
+
+	code.declare_= "bool gson (const " + obj.name_ + "&obj, bson_t &$bson);";
 
 	return code;
 }
@@ -1300,6 +1345,14 @@ bool gsoner::check_member()
 		current_obj_.fields_.push_back(f);
 
 		return true;
+	}
+	else if(first == "bson_oid_t")
+	{
+		field_t f;
+		f.name_ = name;
+		f.required_ = required_;
+		f.type_ = field_t::e_bson_oid;
+		current_obj_.fields_.push_back(f);
 	}
 	else
 	{

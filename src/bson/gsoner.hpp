@@ -56,6 +56,7 @@ private:
 			e_vector,
 			e_map,
 			e_object,
+			e_bson_oid,
 		};
 
 		type_t type_;

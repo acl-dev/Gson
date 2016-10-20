@@ -45,6 +45,6 @@ struct group_t
 	std::list<user_t> list_users;
 	std::vector<user_t> vector_users;
 	std::map<std::string, user_t>  map_users;
-	std::map<std::string, std::list<user_t>>  map_list_users;
-	std::list<std::map<std::string, user_t>> list_map_users;
+ 	std::map<std::string, std::list<user_t>>  map_list_users;
+ 	std::list<std::map<std::string, user_t>> list_map_users;
 };

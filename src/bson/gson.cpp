@@ -1,137 +1,97 @@
+#include "bson.h"
+#include "struct.h"
 #include "gson.h"
 #include "gson_helper.ipp"
-
-
-std::pair<bool, std::string> 
-gson (bson_iter_t &iter, user_t &obj)
+namespace acl
 {
-	std::pair<bool, std::string> result;
-	result.first = true;
-	result.second = "";
+    bool gson (const group_t&$obj, bson_t &$bson)
+    {
 
-	if ( result = bson_get_obj(iter, "id",&obj.id), !result.first)
-		return result;
+        if(bson_append_double(&$bson, "double_", -1, get_value($obj.double_)) == false)
+            return false;
 
-	if(result = bson_get_obj(iter, "username", &obj.username), !result.first)
-		return result;
+        if(bson_append_double(&$bson, "double_ptr_", -1, get_value($obj.double_ptr_)) == false)
+            return false;
 
-	return result;
-}
-std::pair<bool, std::string> gson(bson_iter_t &iter, user_t *obj)
-{
-	return gson(iter, *obj);
-}
-std::pair<bool, std::string> gson(bson_t &bson, user_t &obj)
-{
-	bson_iter_t iter;
-	if(bson_iter_init(&iter, &bson) == false)
-		return std::make_pair(false, "bson_iter_init failed");
-	return gson(iter, obj);
-}
+        if(bson_append_utf8(&$bson, "group_id", -1, get_value($obj.group_id), -1) == false)
+            return false;
 
-bool gson (const user_t &obj, bson_t &bson)
-{
-	if(gson(bson, "id", obj.id) == false)
-		return false;
-	if(gson(bson, "username", obj.username) == false)
-		return false;
-	return true;
-}
-bool gson(const user_t *user, bson_t &bson)
-{
-	if(user == NULL)
-		return false;
-	return gson(*user, bson);
-}
+        if(bson_append_oid(&$bson,"obj_id_", -1, &$obj.obj_id_) == false)
+            return false;
 
-result_t gson (bson_iter_t &iter, group_t &obj)
-{
-	std::pair<bool, std::string> result(true,"");
+        bson_t user;
+        bson_init(&user);
+        destroy_bson_t destroy_user(user);
+        if(gson($obj.user, user) == false)
+            return false;
+        if(bson_append_document(&$bson,"user", -1, &user) == false)
+            return false;
 
-	if(result = bson_get_obj(iter,"double_", &obj.double_), !result.first)
-		return result;
+        bson_t  list_users;
+        bson_init(&list_users);
+        destroy_bson_t destroy_list_users(list_users);
+        if(gson($obj.list_users,list_users) == false)
+            return false;
+        if(bson_append_array(&$bson,"list_users", -1, &list_users) == false)
+            return false;
 
-	if(result = bson_get_obj(iter, "double_ptr_", &obj.double_ptr_), !result.first)
-		return result;
+        bson_t  vector_users;
+        bson_init(&vector_users);
+        destroy_bson_t destroy_vector_users(vector_users);
+        if(gson($obj.vector_users,vector_users) == false)
+            return false;
+        if(bson_append_array(&$bson,"vector_users", -1, &vector_users) == false)
+            return false;
 
-	if (result = bson_get_obj(iter,"group_id", &obj.group_id), !result.first)
-		return result;
+        bson_t map_users;
+        bson_init(&map_users);
+        destroy_bson_t destroy_map_users(map_users);
+        if(gson($obj.map_users,map_users) == false)
+            return false;
+        if(bson_append_document(&$bson,"map_users", -1, &map_users) == false)
+            return false;
 
- 	if(result = bson_get_obj(iter, "obj_id_", &obj.obj_id_), !result.first)
- 		return result;
+        bson_t map_list_users;
+        bson_init(&map_list_users);
+        destroy_bson_t destroy_map_list_users(map_list_users);
+        if(gson($obj.map_list_users,map_list_users) == false)
+            return false;
+        if(bson_append_document(&$bson,"map_list_users", -1, &map_list_users) == false)
+            return false;
 
-	if (result = bson_get_obj(iter,"user", &obj.user), !result.first)
-		return result;
+        bson_t  list_map_users;
+        bson_init(&list_map_users);
+        destroy_bson_t destroy_list_map_users(list_map_users);
+        if(gson($obj.list_map_users,list_map_users) == false)
+            return false;
+        if(bson_append_array(&$bson,"list_map_users", -1, &list_map_users) == false)
+            return false;
 
-	if(result = bson_get_obj(iter, "list_users", &obj.list_users), !result.first)
-		return result;
+        return true;
+    }
+    bool gson (const group_t*$obj, bson_t &$bson)
+    {
+        if($obj == NULL)
+            return false;
+        return gson(*$obj,$bson);
+    }
+    
+    bool gson (const user_t&$obj, bson_t &$bson)
+    {
 
-	if(result = bson_get_obj(iter, "vector_users", &obj.vector_users), !result.first)
-		return result;
+        if(bson_append_int32(&$bson, "id", -1, get_value($obj.id)) == false)
+            return false;
 
-	if(result = bson_get_obj(iter, "map_users", &obj.map_users), !result.first)
-		return result;
+        if(bson_append_utf8(&$bson, "username", -1, get_value($obj.username), -1) == false)
+            return false;
 
-	if(result = bson_get_obj(iter, "map_list_users", &obj.map_list_users), !result.first)
-		return result;
-
-	return result;
-}
-result_t gson(bson_t &bson, group_t &obj)
-{
-	bson_iter_t iter;
-	if(bson_iter_init(&iter, &bson) == false)
-		return std::make_pair(false, "bson_iter_init");
-	return gson(iter, obj);
-}
-result_t gson(bson_iter_t &iter, group_t *obj)
-{
-	if(obj == NULL)
-		return std::make_pair(false, "group null");
-	return gson(iter, *obj);
-}
-
-bool gson (const group_t& obj, bson_t &bson)
-{
-
-	if(gson(bson,"double_" ,obj.double_) == false)
-		return false;
-
-	if(gson(bson, "double_ptr_", obj.double_ptr_) == false)
-		return false;
-
-	if(gson(bson, "group_id", obj.group_id) == false)
-		return false;
-
-	if(gson(bson, "obj_id_", obj.obj_id_) == false)
-		return false;
-
-	if(gson(bson, "user", obj.user) == false)
-		return false;
-
-	if(gson(bson, "list_users", obj.list_users) == false)
-		return false;
-
-	if(gson(bson, "vector_users", obj.vector_users) == false)
-		return false;
-
-	if(gson(bson, "map_users", obj.map_users) == false)
-		return false;
-
-// 	if(gson(bson, "map_list_users", obj.map_list_users) == false)
-// 		return false;
-
-// 	if(bson_append_obj(bson, "list_map_users", obj.list_map_users) == false)
-// 		return false;
-
-	return true;
-}
-
-bool gson(const group_t *group, bson_t &bson)
-{
-	if(group == NULL)
-		return false;
-	return gson(*group, bson);
-}
-
-
+        return true;
+    }
+    bool gson (const user_t*$obj, bson_t &$bson)
+    {
+        if($obj == NULL)
+            return false;
+        return gson(*$obj,$bson);
+    }
+    
+}///end of acl.
