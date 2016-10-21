@@ -538,6 +538,12 @@ namespace acl
 
 	template<class K, class T>
 	static inline bool gson(const std::map<K, T> &objs, bson_t &bson);
+	
+	template<class K, class T>
+	static inline bool gson(const std::map<K, std::list<T>> &objs, bson_t &bson);
+
+	template<class K, class T>
+	static inline bool gson(const std::map<K, std::vector<T>> &objs, bson_t &bson);
 
 	template<class K, class T>
 	static inline bool gson(const std::map<K, T> *objs, bson_t &bson);
@@ -618,6 +624,45 @@ namespace acl
 		}
 		return true;
 	}
+	template<class K, class T>
+	static inline bool gson(const std::map<K, std::list<T>> &objs, bson_t &bson)
+	{
+		int i = 0;
+		for(std::map<K, std::list<T>>::const_iterator  itr = objs.begin();
+			itr != objs.end();
+			++itr)
+		{
+			bson_t child2;
+			destroy_bson_t d2(child2);
+			bson_init(&child2);
+			if(gson(itr->second, child2) == false)
+				return false;
+			if(bson_append_array(&bson, get_value(itr->first), -1, &child2) == false)
+				return false;
+			i++;
+		}
+		return true;
+	}
+	template<class K, class T>
+	static inline bool gson(const std::map<K, std::vector<T>> &objs, bson_t &bson)
+	{
+		int i = 0;
+		for(std::map<K, std::vector<T>>::const_iterator  itr = objs.begin();
+			itr != objs.end();
+			++itr)
+		{
+			bson_t child2;
+			destroy_bson_t d2(child2);
+			bson_init(&child2);
+			if(gson(itr->second, child2) == false)
+				return false;
+			if(bson_append_array(&bson, get_value(itr->first), -1, &child2) == false)
+				return false;
+			i++;
+		}
+		return true;
+	}
+
 	template<class K, class T>
 	static inline bool gson(const std::map<K, T> *objs, bson_t &bson)
 	{

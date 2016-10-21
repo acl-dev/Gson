@@ -167,18 +167,21 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	if (field.type_ == field_t::e_bool ||
 		field.type_ == field_t::e_bool_ptr)
 	{
+		str += "// "+field.name_+"\n    ";
 		str += "if(bson_append_double(&$bson, \""+ field.name_ + "\", -1, get_value($obj." + field.name_+")) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_number)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "if(bson_append_int32(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + ")) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_int64)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "if(bson_append_int64(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + ")) == false)\n";
 		str += tab_;
 		str += tab_;
@@ -187,12 +190,14 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 			  field.type_ == field_t::e_cstr ||
 			  field.type_ == field_t::e_ccstr)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "if(bson_append_utf8(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + "), -1) == false)\n";
 		str += tab_;
 		str += tab_;
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_double)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "if(bson_append_double(&$bson, \"" + field.name_ + "\", -1, get_value($obj." + field.name_ + ")) == false)\n";
 		str += tab_;
 		str += tab_;
@@ -202,6 +207,7 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	else if (field.type_ == field_t::e_list ||
 			  field.type_ == field_t::e_vector)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "bson_t  " + field.name_ + ";\n";
 		str += tab_;
 		str += "bson_init(&" + field.name_ + ");\n";
@@ -219,6 +225,7 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 		str += "return false;\n";
 	}else if (field.type_ == field_t::e_map)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "bson_t " + field.name_ + ";\n";
 		str += tab_;
 		str += "bson_init(&" + field.name_ + ");\n";
@@ -237,6 +244,7 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	}
 	else if (field.type_ == field_t::e_bson_oid)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "if(bson_append_oid(&$bson,\"" + field.name_ + "\", -1, &$obj." + field.name_ + ") == false)\n";
 		str += tab_;
 		str += tab_;
@@ -244,6 +252,7 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	}
 	else if (field.type_ == field_t::e_object)
 	{
+		str += "// " + field.name_ + "\n    ";
 		str += "bson_t " + field.name_ + ";\n";
 		str += tab_;
 		str += "bson_init(&" + field.name_ + ");\n";
@@ -262,7 +271,8 @@ std::string gsoner::get_pack_bson_code(const field_t &field)
 	}
 	else 
 	{
-		str += "error_type";
+		str += "// " + field.name_ + "\n    ";
+		str += "static_assert((\"type_error\",0))\n";
 	}
 	return str;
 }
@@ -302,25 +312,54 @@ gsoner::function_code_t gsoner::gen_pack_bson_code(const object_t &obj)
 std::string gsoner::get_unpack_bson_code(const field_t &field)
 {
 	std::string str;
-	if(field.type_ == field_t::e_list ||
-	   field.type_ == field_t::e_map ||
-	   field.type_ == field_t::e_object)
+	if (field.required_)
 	{
-		str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\") == false)\n";
-		str += "        return std::make_pair(false, \"bison_iter_find [" + field.name_ + "] failed.\");\n";
-		str += "    bson_iter_t " + field.name_ + "_iter;\n";
-		str += "    if(bson_iter_recurse(&$itr, &"+field.name_+"_iter) == false)\n";
-		str += "        return std::make_pair(false, \"bson_iter_recurse [" + field.name_ + "] failed.\");\n";
-		str += "    if(result = gson("+field.name_+"_iter, &$obj."+field.name_+"), !result.first)\n";
-		str += "        return std::make_pair(false, \"gson[" + field.name_ + "] failed:[\"+result.second+\"]\");\n";
+		if(field.type_ == field_t::e_list ||
+		   field.type_ == field_t::e_map ||
+		   field.type_ == field_t::e_object||
+		   field.type_ == field_t::e_vector)
+		{
+			str += "    // "+field.name_+"\n";
+			str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\") == false)\n";
+			str += "        return std::make_pair(false, \"bison_iter_find [" + field.name_ + "] failed.\");\n";
+			str += "    bson_iter_t " + field.name_ + "_iter;\n";
+			str += "    if(bson_iter_recurse(&$itr, &" + field.name_ + "_iter) == false)\n";
+			str += "        return std::make_pair(false, \"bson_iter_recurse [" + field.name_ + "] failed.\");\n";
+			str += "    if(result = gson(" + field.name_ + "_iter, &$obj." + field.name_ + "), !result.first)\n";
+			str += "        return std::make_pair(false, \"gson[" + field.name_ + "] failed:[\"+result.second+\"]\");\n";
+		}
+		else
+		{
+			str += "    // " + field.name_ + "\n";
+			str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\") == false)\n";
+			str += "        return std::make_pair(false, \"bison_iter_find [" + field.name_ + "] failed\");\n";
+			str += "    if(result = gson($itr, &$obj." + field.name_ + "), !result.first)\n";
+			str += "        return std::make_pair(false, \"gson[" + field.name_ + "] failed:[\"+result.second+\"]\");\n";
+		}
 	}
 	else
 	{
-		str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\") == false)\n";
-		str += "        return std::make_pair(false, \"bison_iter_find [" + field.name_ + "] failed\");\n";
-		str += "    if(result = gson($itr, &$obj." + field.name_ + "), !result.first)\n";
-		str += "        return std::make_pair(false, \"gson[" + field.name_ + "] failed:[\"+result.second+\"]\");\n";
+		if(field.type_ == field_t::e_list ||
+		   field.type_ == field_t::e_map ||
+		   field.type_ == field_t::e_object||
+		   field.type_ == field_t::e_vector)
+		{
+			str += "    // " + field.name_ + "\n";
+			str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\"))\n";
+			str += "    {\n"
+				   "          bson_iter_t " + field.name_ + "_iter;\n";
+			str += "          if(bson_iter_recurse(&$itr, &" + field.name_ + "_iter))\n";
+			str += "                gson(" + field.name_ + "_iter, &$obj." + field.name_ + ");\n"
+				   "     }";
+		}
+		else
+		{
+			str += "    // " + field.name_ + "\n";
+			str += "    if(bson_iter_find(&$itr,\"" + field.name_ + "\"))\n";
+			str += "          gson($itr, &$obj." + field.name_ + ");\n";
+		}
 	}
+	
 	return str;
 }
 
@@ -330,7 +369,7 @@ acl::gsoner::function_code_t gsoner::gen_unpack_bson_code(const object_t &obj)
 
 	std::string str;
 
-	str += "result_t gson(bson_iter_t &$itr," + obj.name_ + " $obj)\n"
+	str += "result_t gson(bson_iter_t &$itr," + obj.name_ + " &$obj)\n"
 		"{\n\n"
 		"    result_t result;\n";
 
@@ -342,8 +381,15 @@ acl::gsoner::function_code_t gsoner::gen_unpack_bson_code(const object_t &obj)
 	}
 
 	str += "    return std::make_pair(true,\"\");\n}";
-
 	code.definition_ = str;
+	code.definition_ptr_ = "result_t gson(bson_iter_t &$itr," + obj.name_ + " *$obj)\n"
+		"{\n\n"
+		"    if($obj == NULL)\n"
+		"        return std::make_pair(false,\"" + obj.name_ + " null\");\n"
+		"    return gson($itr, *$obj);\n}";
+	code.declare_ = "result_t gson(bson_iter_t &$itr,"+ obj.name_ + " &obj);";
+	code.declare_ptr_ = "result_t gson(bson_iter_t &$itr," + obj.name_ + " *obj);";
+
 	return code;
 }
 
@@ -1325,6 +1371,7 @@ bool gsoner::check_member()
 			{
 				field_t f;
 				f.name_ = name;
+				f.required_ = required_;
 				f.type_ = field_t::e_map;
 				current_obj_.fields_.push_back(f);
 
@@ -1642,13 +1689,15 @@ void gsoner::gen_bson()
 	write_header(namespace_start);
 	write_source(namespace_start);
 
+	write_header("\n    typedef std::pair<bool, std::string> result_t;");
+
 	for(std::map<std::string, object_t>::iterator itr = objs_.begin();
 		itr != objs_.end(); ++itr)
 	{
 		function_code_t pack = gen_pack_bson_code(itr->second);
 		function_code_t unpack = gen_unpack_bson_code(itr->second);
 
-		write_header(('\n' + tab_ + "//" + itr->second.name_));
+		write_header(("\n\n" + tab_ + "//" + itr->second.name_));
 		write_header(('\n' + tab_ + pack.declare2_));
 		write_header(('\n' + tab_ + pack.declare_));
 		write_header(('\n' + tab_ + pack.declare_ptr_));

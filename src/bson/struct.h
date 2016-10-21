@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <list>
-#include "bson.h"
 #include <vector>
 #include <map>
 
@@ -37,14 +36,43 @@ struct group_t
 		if(double_ptr_)
 			delete double_ptr_;
 	}
+	
+	//Gson@optional
+	
 	double double_;
+
+	//Gson@optional
+
 	double *double_ptr_;
+	
+	//Gson@optional
 	std::string group_id;
+	
+	//Gson@optional
+	
 	bson_oid_t obj_id_;
+	
+	//Gson@optional
+	
 	user_t user;
+	
+	//Gson@optional
+	
 	std::list<user_t> list_users;
+	
+	//Gson@optional
+	
 	std::vector<user_t> vector_users;
+	
+	//Gson@optional
+	
 	std::map<std::string, user_t>  map_users;
- 	std::map<std::string, std::list<user_t>>  map_list_users;
- 	std::list<std::map<std::string, user_t>> list_map_users;
+	
+	//Gson@optional
+ 	
+	std::map<std::string, std::list<user_t>>  map_list_users;
+	
+	//Gson@optional
+ 	
+	std::list<std::map<std::string, user_t>> list_map_users;
 };

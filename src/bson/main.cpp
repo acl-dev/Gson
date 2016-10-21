@@ -2,11 +2,13 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <string.h>
+#include "bson.h"
 #include "struct.h"
 #include "gson.h"
-#include "gson_helper.ipp"
-#include <string.h>
+
 #include "gsoner.hpp"
+#include "gson_helper.ipp"
 
 void test1 ()
 {
@@ -21,12 +23,13 @@ void test1 ()
 	bson_iter_t iter;
 	assert (bson_iter_init (&iter, &bson));
 	
-	//group_t group;
-	//gson (iter, group);
+	group_t group;
+	acl:: result_t res = acl::gson(iter, group);
+	assert(res.first);
 	
 	bson_t bson2;
 	bson_init (&bson2);
-	//gson (group, bson2);
+	assert(acl::gson (group, bson2));
 	char *str1 = bson_as_json (&bson2, 0);
 	char *str2 = bson_as_json(&bson, 0);
 
@@ -36,7 +39,7 @@ void test1 ()
 	bson_free (str1);
 	bson_free(str2);
 	bson_destroy (&bson);
-	//bson_destroy (&bson2);
+	bson_destroy (&bson2);
 	return ;
 }
 
@@ -49,10 +52,10 @@ void tt(int)
 }
 int main ()
 {
-	tt(0);
-// 	for (int i = 0; i < 10000000; i ++)
-// 	{
-// 		test1 ();
-// 	}
+	//tt(0);
+ 	for (int i = 0; i < 10000000; i ++)
+ 	{
+ 		test1 ();
+ 	}
 	return 0;
 }
