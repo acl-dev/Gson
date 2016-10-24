@@ -85,7 +85,6 @@ namespace acl
             return false;
         return gson(*$obj,$bson);
     }
-    
     result_t gson(bson_iter_t &$itr,group_t &$obj)
     {
 
@@ -157,6 +156,14 @@ namespace acl
             return std::make_pair(false,"group_t null");
         return gson($itr, *$obj);
     }
+    result_t gson(bson_t &bson,group_t &obj)
+    {
+        bson_iter_t iter;
+        if(!bson_iter_init(&iter, &bson))
+             return std::make_pair(false,"bson_iter_init fail");
+        return gson(iter,obj);
+    }
+
     bool gson (const user_t&$obj, bson_t &$bson)
     {
 
@@ -176,7 +183,6 @@ namespace acl
             return false;
         return gson(*$obj,$bson);
     }
-    
     result_t gson(bson_iter_t &$itr,user_t &$obj)
     {
 
@@ -202,4 +208,12 @@ namespace acl
             return std::make_pair(false,"user_t null");
         return gson($itr, *$obj);
     }
+    result_t gson(bson_t &bson,user_t &obj)
+    {
+        bson_iter_t iter;
+        if(!bson_iter_init(&iter, &bson))
+             return std::make_pair(false,"bson_iter_init fail");
+        return gson(iter,obj);
+    }
+
 }///end of acl.

@@ -20,11 +20,8 @@ void test1 ()
 
 	assert (bson_init_from_json (&bson, json, -1, NULL));
 
-	bson_iter_t iter;
-	assert (bson_iter_init (&iter, &bson));
-	
 	group_t group;
-	acl:: result_t res = acl::gson(iter, group);
+	acl:: result_t res = acl::gson(bson, group);
 	assert(res.first);
 	
 	bson_t bson2;
@@ -53,6 +50,7 @@ void tt(int)
 int main ()
 {
 	//tt(0);
+	//return 0;
  	for (int i = 0; i < 10000000; i ++)
  	{
  		test1 ();

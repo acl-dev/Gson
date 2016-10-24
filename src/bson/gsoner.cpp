@@ -389,6 +389,15 @@ acl::gsoner::function_code_t gsoner::gen_unpack_bson_code(const object_t &obj)
 		"    return gson($itr, *$obj);\n}";
 	code.declare_ = "result_t gson(bson_iter_t &$itr,"+ obj.name_ + " &obj);";
 	code.declare_ptr_ = "result_t gson(bson_iter_t &$itr," + obj.name_ + " *obj);";
+	code.definition2_ =
+		"result_t gson(bson_t &bson,"+obj.name_+" &obj)\n"
+		"{\n"
+		"    bson_iter_t iter;\n"
+		"    if(!bson_iter_init(&iter, &bson))\n"
+		"         return std::make_pair(false,\"bson_iter_init fail\");\n"
+		"    return gson(iter,obj);\n"
+		"}\n";
+	code.declare2_ = "result_t gson(bson_t &bson,      "+obj.name_+"&obj);";
 
 	return code;
 }
@@ -1698,17 +1707,17 @@ void gsoner::gen_bson()
 		function_code_t unpack = gen_unpack_bson_code(itr->second);
 
 		write_header(("\n\n" + tab_ + "//" + itr->second.name_));
-		write_header(('\n' + tab_ + pack.declare2_));
 		write_header(('\n' + tab_ + pack.declare_));
 		write_header(('\n' + tab_ + pack.declare_ptr_));
+		write_header(('\n' + tab_ + unpack.declare2_));
 		write_header('\n' + tab_ + unpack.declare_);
 		write_header('\n' + tab_ + unpack.declare_ptr_);
 
 		write_source(add_4space(pack.definition_));
 		write_source(add_4space(pack.definition_ptr_));
-		write_source(add_4space(pack.definition2_));
 		write_source(add_4space(unpack.definition_));
 		write_source(add_4space(unpack.definition_ptr_));
+		write_source(add_4space(unpack.definition2_));
 	}
 
 	write_header(namespace_end);
